@@ -1,10 +1,10 @@
 @font-face {
     font-family: '8bitoperator JVE Regular';
-    src: url('8bitoperator_jve.eot');
-    src: url('8bitoperator_jve.eot?#iefix') format('embedded-opentype'),
+    src: url('assets/fonts/8bitoperator_jve.eot');
+    src: url('assets/fonts8bitoperator_jve.eot?#iefix') format('embedded-opentype'),
          url('assets/fonts/8bitoperator_jve.woff') format('woff'),
          url('assets/fonts/8bitoperator_jve.ttf') format('truetype'),
-         url('8bitoperator_jve.svg#8bitoperator JVE Regular') format('svg');
+         url('assets/fonts/8bitoperator_jve.svg#8bitoperator JVE Regular') format('svg');
     font-weight: 800;
     font-style: normal;
 }
