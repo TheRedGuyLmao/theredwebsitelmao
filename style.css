@@ -1,7 +1,24 @@
+@font-face {
+    font-family: '8bitoperator JVE Regular';
+    src: url('8bitoperator_jve.eot');
+    src: url('8bitoperator_jve.eot?#iefix') format('embedded-opentype'),
+         url('8bitoperator_jve.woff') format('woff'),
+         url('8bitoperator_jve.ttf') format('truetype'),
+         url('8bitoperator_jve.svg#8bitoperator JVE Regular') format('svg');
+    font-weight: 800;
+    font-style: normal;
+}
+
 html {
     background-color: rgb(7, 3, 35);
     background-image: url("assets/IMAGE_DEPTHS.gif");
-        background-size: center;
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+    image-rendering: pixelated;
 
-    color:darkgrey;
+    color:lightgray;
+    font-family: '8bitoperator JVE Regular', monospace;
+    font-size: 28px;
 }
