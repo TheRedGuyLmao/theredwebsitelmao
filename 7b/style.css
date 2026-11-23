@@ -1,0 +1,19 @@
+@font-face {
+    font-family: '8bitoperator JVE';
+    src: url('../assets/fonts/determination-8-bit-oper-jve-mono.otf.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+}
+
+html {
+    background-color: rgb(0, 0, 0);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-attachment: fixed;
+    image-rendering: pixelated;
+
+    color:rgb(0, 0, 0);
+    font-family: '8bitoperator JVE', monospace;
+    font-size: 64px;
+}

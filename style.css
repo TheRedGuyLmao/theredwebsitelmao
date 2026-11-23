@@ -1,10 +1,6 @@
 @font-face {
-    font-family: '8bitoperator JVE Regular';
-    src: url('assets/fonts/8bitoperator_jve.eot');
-    src: url('assets/fonts8bitoperator_jve.eot?#iefix') format('embedded-opentype'),
-         url('assets/fonts/8bitoperator_jve.woff') format('woff'),
-         url('assets/fonts/8bitoperator_jve.ttf') format('truetype'),
-         url('assets/fonts/8bitoperator_jve.svg#8bitoperator JVE Regular') format('svg');
+    font-family: '8bitoperator JVE';
+    src: url('assets/fonts/determination-8-bit-oper-jve-mono.otf.woff2') format('woff2');
     font-weight: 800;
     font-style: normal;
 }
@@ -34,6 +30,6 @@ html {
     image-rendering: pixelated;
 
     color:lightgray;
-    font-family: '8bitoperator JVE Regular', monospace;
+    font-family: '8bitoperator JVE', monospace;
     font-size: 28px;
 }
