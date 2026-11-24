@@ -20,6 +20,21 @@
     cursor: pointer;
 }
 
+#lang-switch {
+    position: fixed;
+    top: 60px;
+    right: 15px;
+    z-index: 1000;
+
+    background-color: rgb(7, 3, 35);
+    color: white;
+    border: 2px solid pink;
+    padding: 8px 12px;
+
+    font-family: inherit;
+    cursor: pointer;
+}
+
 html {
     background-color: rgb(7, 3, 35);
     background-image: url("assets/IMAGE_DEPTHS.gif");
