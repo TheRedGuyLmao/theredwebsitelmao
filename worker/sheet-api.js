@@ -122,8 +122,9 @@ export async function handleApi(request, env, path) {
       if (me.admin) return ERR("У мастера нет своего листа", 403);
       if (m === "GET") return J(forPlayer((await read(env, me.login)) || blank()));
       if (m === "PUT") {
-        const next = playerUpdate(await read(env, me.login), await body());
-        await write(env, me.login, next);
+        const old = await read(env, me.login), next = playerUpdate(old, await body());
+        // Бесплатный KV даёт 1000 записей в сутки — не пишем, если ничего не поменялось.
+        if (!old || JSON.stringify(next) !== JSON.stringify(old)) await write(env, me.login, next);
         return J(forPlayer(next));
       }
     }
@@ -173,7 +174,11 @@ export async function handleApi(request, env, path) {
       if (path === "admin/sheet") {
         if (!who) return ERR("Не указан игрок");
         if (m === "GET") { if (!await getUser(env, who)) return ERR("Нет такого игрока", 404); return J((await read(env, who)) || blank()); }
-        if (m === "PUT") { const s = adminUpdate(await read(env, who), await body()); await write(env, who, s); return J(s); }
+        if (m === "PUT") {
+          const old = await read(env, who), s = adminUpdate(old, await body());
+          if (!old || JSON.stringify(s) !== JSON.stringify(old)) await write(env, who, s);
+          return J(s);
+        }
         if (m === "DELETE") {
           await Promise.all([env.SHEETS.delete(sheetKey(who)), env.SHEETS.delete(userKey(who)), env.SHEETS.delete(failKey(who))]);
           return J({ ok: true });

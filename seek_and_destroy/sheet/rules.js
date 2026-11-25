@@ -4,6 +4,11 @@
 export const POOL = 8;   // очков на распределение при создании
 export const MIN = 1;    // стартовое значение каждой характеристики
 export const MAX = 6;    // максимум при создании
+// Время кампании. Возраст = YEAR − год рождения (3033 → 18 лет).
+export const YEAR = 3051;
+export const DOB_MIN = 2955;   // самый ранний год рождения
+export const DOB_MAX = 3033;   // самый поздний год рождения
+export const YEAR_NOTE = "Действия происходят в 3051 году. Минимальный год 3033, максимальный - 2955";
 export const MAX_LVL = 20; // максимальный уровень; каждый новый уровень даёт 1 очко навыков
 
 // [код, название, система, описание для игроков]
@@ -73,23 +78,23 @@ export const CLASSES = [
   { id: "det", name: "Детектив", text: "Логический склад ума, находи связь там, где другие слепы.",
     mods: { logic: 1, inl: 1, elc: 1, enc: -2 }, wpn: [{ n: "Карманный револьвер", d: "Барабан: 5/5 патр." }], inv: ["Журнал заметок", "Патроны .358 магнум (15 шт.)"], imp: 1, spl: 0 },
   { id: "bers", name: "Берсерк", text: "Да кому нужны роскошества будущего? Твоих кулаков достаточно!",
-    mods: { str: 1, pain: 1, sth: -1 }, wpn: [{ n: "Кулаки", d: "Что тебе ещё нужно для счастья?" }], inv: [], imp: 0, spl: 1 },
+    mods: { str: 1, pain: 1, sth: -1 }, wpn: [{ n: "Кулаки", d: "Что тебе ещё нужно для счастья?" }], inv: ["Боевой стимулятор (3 шт.)"], imp: 0, spl: 1 },
   { id: "rogue", name: "Плут", text: "Скрытность — твоё второе имя. Пропадай перед глазами у врагов. Кради, что неровно лежит.",
     mods: { sth: 1, hand: 1, pain: -1 }, wpn: [], inv: ["Воровские инструменты", "Антикварная монета", "Оценочный инструмент"], imp: 0, spl: 1 },
   { id: "medic", name: "Медик", text: "Клятва Гиппократа.",
     mods: { med: 2, elc: -1 }, wpn: [], inv: ["Набор первой помощи (5 использований)", "Медицинский анализатор", "Шприц с морфином"], imp: 0, spl: 0 },
   { id: "chum", name: "Чумба", text: "Плоть слаба, чипуйся!",
-    mods: { end: 1, equi: 1, mag: -1 }, wpn: [], inv: [], imp: 3, spl: 0 },
+    mods: { end: 1, equi: 1, mag: -1 }, wpn: [{ n: "Пистолет Лексингтон", d: "Магазин: 21/21 патр." }], inv: ["Магазин для Лексингтона, 21 патр. (3 шт.)"], imp: 3, spl: 0 },
 ];
 
-const TEXT = ["name", "sex", "dob", "planet", "pname", "pdesc", "race", "prof", "h", "w", "look", "photo",
+const TEXT = ["name", "sex", "dob", "planet", "pname", "pdesc", "pcode", "race", "prof", "h", "w", "look", "photo",
   "ideals", "traits", "bonds", "flaws", "bio", "why", "notes", "gm"];
 // Что игрок может менять сам после регистрации (плюс инвентарь и кредиты):
 const AFTER = ["look", "photo", "ideals", "traits", "bonds", "flaws", "bio", "why", "notes"];
 
 export const blank = () => ({
   created: false, lvl: 1,
-  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", race: "", prof: "", cls: "", h: "", w: "",
+  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", pcode: "", race: "", prof: "", cls: "", h: "", w: "",
   look: "", photo: "",
   attr: { int: 1, psy: 1, phy: 1, mot: 1 }, faith: "", sig: "",
   ideals: "", traits: "", bonds: "", flaws: "", bio: "", why: "",
@@ -139,11 +144,14 @@ export const skill = (s, id) => Math.max(0, eff(s, attrOf(id)) + (s.rk[id] || 0)
 // Потолок навыка: значение, когда в него вложено максимум очков.
 export const ceil = (s, id) => Math.max(0, eff(s, attrOf(id)) + cap(s, id) + mod(s, id));
 export const humanity = s => Math.max(0, 100 - s.imp.reduce((a, i) => a + (parseInt(i.c) || 0), 0));
+// Код своей планеты: СИСТЕМА-НН-НННН, например KR-07-1234. Пустой — значит XX-00-0000.
+export const pcodeOk = v => /^[A-Z]{2}-\d{2}-\d{4}$/.test(v);
+export const planetCode = s => s.planet === OTHER ? (pcodeOk(s.pcode) ? s.pcode : OTHER) : s.planet;
 export const planetName = s => s.planet === OTHER ? (s.pname.trim() || "Другая") : PLANETS.find(p => p[0] === s.planet)?.[1] || "";
 export function fid(s) {
   let h = 7;
   for (const ch of s.name) h = (h * 31 + ch.charCodeAt(0)) % 99991;
-  return s.planet + "/" + String(h % 10000).padStart(4, "0");
+  return planetCode(s) + "/" + String(h % 10000).padStart(4, "0");
 }
 
 // Дата рождения строго ГГГГ-ММ-ДД и должна существовать (никаких 31 февраля).
@@ -153,12 +161,20 @@ export function dobOk(v) {
   const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3];
 }
+// Возраст по дате рождения (или null, если дата неполная).
+export const age = dob => dobOk(dob) ? YEAR - +dob.slice(0, 4) : null;
+export const ageText = n => n === null ? "" : `${n} ${n % 100 > 10 && n % 100 < 20 ? "лет" : n % 10 === 1 ? "год" : n % 10 > 1 && n % 10 < 5 ? "года" : "лет"}`;
 // Ошибки первого шага (досье) — без них дальше не пустит.
 export function basicsErrors(s) {
   const e = [];
   if (!s.name.trim()) e.push("Не указано имя");
-  if (!dobOk(s.dob)) e.push("Дата рождения: нужен формат ГГГГ-ММ-ДД, например 2051-01-21");
+  if (!dobOk(s.dob)) e.push(`Дата рождения: нужен формат ГГГГ-ММ-ДД, например ${DOB_MAX - 3}-01-21`);
+  else if (+s.dob.slice(0, 4) < DOB_MIN || +s.dob.slice(0, 4) > DOB_MAX) e.push(`Дата рождения: год от ${DOB_MIN} до ${DOB_MAX} (сейчас ${YEAR} год)`);
   if (s.planet === OTHER && (!s.pname.trim() || !s.pdesc.trim())) e.push("Своя планета: нужно название и описание");
+  if (s.planet === OTHER && s.pcode) {
+    if (!pcodeOk(s.pcode)) e.push("Код планеты: нужен формат СИСТЕМА-НН-НННН, например KR-07-1234");
+    else if (PLANETS.some(p => p[0] === s.pcode && p[0] !== OTHER)) e.push("Код планеты: такой код уже занят известной планетой");
+  }
   return e;
 }
 
@@ -178,7 +194,7 @@ export function playerUpdate(oldS, inc) {
   inc = normalize(inc);
   const n = normalize(old);
   if (!old.created) {
-    for (const k of ["name", "sex", "dob", "planet", "pname", "pdesc", "race", "prof", "h", "w", ...AFTER]) n[k] = inc[k];
+    for (const k of ["name", "sex", "dob", "planet", "pname", "pdesc", "pcode", "race", "prof", "h", "w", ...AFTER]) n[k] = inc[k];
     n.inv = inc.inv; n.wpn = inc.wpn;
     n.attr = inc.attr; n.faith = inc.faith; n.sig = inc.sig; n.cls = inc.cls;
     const c = classOf(n); // импланты и заклинания игрок сам не добавляет — это делает мастер

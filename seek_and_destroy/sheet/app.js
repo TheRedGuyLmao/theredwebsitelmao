@@ -41,7 +41,7 @@ const net = {
 /* ---------- демо без сервера: всё в этом браузере ---------- */
 function seed() {
   const b = Object.assign(R.blank(), {
-    created: true, name: "Брам Окто-Велль", sex: "Мужской", dob: "2049-03-14", planet: "GR-00-2001", race: "Кротолюд", prof: "Техник", h: "148", w: "61",
+    created: true, name: "Брам Окто-Велль", sex: "Мужской", dob: "3021-03-14", planet: "GR-00-2001", race: "Кротолюд", prof: "Техник", h: "148", w: "61",
     look: "Низкий и плотный, шерсть с проседью, на носу треснувшие защитные очки. Пахнет машинным маслом.",
     attr: { int: 4, psy: 2, phy: 3, mot: 3 }, faith: "giros", sig: "an", rk: { an: 2, logic: 1, end: 1 }, sp: 2, cr: 240,
     inv: ["КПК ИАБ (стёртая прошивка)", "Набор отвёрток и паяльник", "Обрез «Пфир-12», 6 патронов", "Фляга грибного самогона"],
@@ -95,8 +95,8 @@ async function detect() {
 
 /* ---------- куски интерфейса ---------- */
 const FL = {
-  name: ["Полное Федеральное имя"], sex: ["Пол"], dob: ["Дата рождения", "ГГГГ-ММ-ДД, например 2051-01-21"],
-  pname: ["Название планеты"], pdesc: ["О планете", "Климат, природа, кто там живёт и чем она знаменита", 1],
+  name: ["Полное Федеральное имя"], sex: ["Пол"], dob: ["Дата рождения", "ГГГГ-ММ-ДД, например 3030-01-21"],
+  pname: ["Название планеты"], pcode: ["Код планеты", "СИСТЕМА-НН-НННН, например KR-07-1234. Можно оставить XX-00-0000"], pdesc: ["О планете", "Климат, природа, кто там живёт и чем она знаменита", 1],
   race: ["Раса"], prof: ["Профессия"], h: ["Рост, см"], w: ["Вес, кг"],
   look: ["Внешность", "Лицо, одежда, особые приметы, как он звучит и пахнет", 1],
   ideals: ["Идеалы", "Во что персонаж верит и за что готов бороться", 1],
@@ -109,9 +109,12 @@ const FL = {
   gm: ["Заметки мастера", "Игрок их не видит", 1],
 };
 const WIDE = ["look", "pdesc", "bio", "why", "notes", "gm"];
+const ageLine = () => { const n = R.age(S.dob); return n === null ? "" : `Возраст: ${R.ageText(n)}`; };
 function fld(k, cls = "") {
   const [l, h, ta] = FL[k], v = esc(S[k]);
-  return `<label class="${cls}">${l}${h ? `<small>${h}</small>` : ""}${ta ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}"${k === "h" || k === "w" ? ' inputmode="numeric"' : ""}${k === "dob" ? ` inputmode="numeric" placeholder="ГГГГ-ММ-ДД" maxlength="10"${S.dob && !R.dobOk(S.dob) ? ' class="bad"' : ""}` : ""}>`}</label>`;
+  const info = k === "dob" ? ` <span class="info" data-tip="${esc(R.YEAR_NOTE)}" tabindex="0" aria-label="${esc(R.YEAR_NOTE)}">i</span>` : "";
+  const after = k === "dob" ? `<small class="age" id="age">${ageLine()}</small>` : "";
+  return `<label class="${cls}">${l}${info}${h ? `<small>${h}</small>` : ""}${ta ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}"${k === "h" || k === "w" ? ' inputmode="numeric"' : ""}${k === "dob" ? ` inputmode="numeric" placeholder="ГГГГ-ММ-ДД" maxlength="10"${S.dob && R.basicsErrors(S).some(x => x.startsWith("Дата")) ? ' class="bad"' : ""}` : ""}${k === "pcode" ? ` placeholder="XX-00-0000" maxlength="10" autocapitalize="characters" spellcheck="false"${S.pcode && !R.pcodeOk(S.pcode) ? ' class="bad"' : ""}` : ""}>`}${after}</label>`;
 }
 const num = (k, l) => `<label>${l}<input data-k="${k}" data-n="1" inputmode="numeric" value="${esc(S[k])}"></label>`;
 const opt = (v, t, cur) => `<option value="${esc(v)}"${cur === v ? " selected" : ""}>${esc(t)}</option>`;
@@ -121,7 +124,7 @@ function planetInfo() {
   const p = R.PLANETS.find(x => x[0] === S.planet) || R.PLANETS[0];
   const own = S.planet === R.OTHER, done = own && S.pname.trim() && S.pdesc.trim();
   return `<div class="pinfo wide"><div class="toolbar" style="margin:0 0 6px">
-      <h3>${own ? esc(S.pname.trim() || "Своя планета") : esc(p[1])}<small>${own ? "система на выбор мастера" : `система ${esc(p[2])} · ${esc(p[0])}`}</small></h3>
+      <h3>${own ? esc(S.pname.trim() || "Своя планета") : esc(p[1])}<small>${own ? `${esc(R.planetCode(S))} · система на выбор мастера` : `система ${esc(p[2])} · ${esc(p[0])}`}</small></h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">${own ? `<button data-act="pdlg"${done ? "" : ' class="pri"'}>${done ? "Изменить описание" : "Описать планету"}</button>` : ""}<button data-act="atlas">Все планеты</button></div></div>
     <p>${own ? (done ? esc(S.pdesc) : `<span style="color:var(--acc)">Планета ещё не описана.</span>`) : esc(p[3])}</p>
     ${own ? `<p class="hint" style="margin:6px 0 0">${esc(R.OTHER_NOTE)}</p>` : ""}</div>`;
@@ -132,7 +135,7 @@ function dialog(html, foot = `<span></span><button class="pri" data-act="dclose"
   d.innerHTML = `<div class="panel">${html}<div class="nav">${foot}</div></div>`;
   if (!d.open) d.showModal();
 }
-const planetDlg = () => dialog(`<h2 class="stepH">Своя планета</h2><p class="hint">${esc(R.OTHER_NOTE)}</p><div class="f">${fld("pname", "wide")}${fld("pdesc", "wide")}</div>`);
+const planetDlg = () => dialog(`<h2 class="stepH">Своя планета</h2><p class="hint">${esc(R.OTHER_NOTE)}</p><div class="f">${fld("pname")}${fld("pcode")}${fld("pdesc", "wide")}</div>`);
 const atlasDlg = () => dialog(`<h2 class="stepH">Планеты</h2><p class="hint">Обитаемые миры, о которых знает каждый. Можно выбрать и свою планету — тогда опишешь её сам.</p>
   <div class="atlas">${R.PLANETS.map(([c, n, sys, t]) => `<div class="box${S.planet === c ? " on" : ""}"><h3>${esc(n)}<span>${sys ? `${esc(sys)} · ${esc(c)}` : "придумываешь сам"}</span></h3><p>${esc(t)}</p>
     <button data-act="pick" data-c="${esc(c)}" style="margin-top:10px"${S.planet === c ? " disabled" : ""}>${S.planet === c ? "Выбрана" : "Выбрать"}</button></div>`).join("")}</div>`);
@@ -170,9 +173,9 @@ function idCard(m) {
   const A = m === "admin", f = R.faithOf(S), h = R.humanity(S);
   const fact = (l, v) => `<div><dt>${l}</dt><dd>${esc(v || "—")}</dd></div>`;
   const top = A
-    ? `<div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${S.planet === R.OTHER ? fld("pname") + fld("pdesc", "wide") : ""}${fld("race")}${clsSel()}${fld("h")}${fld("w")}${faithSel()}${sigSel()}${num("cr", "Кредиты")}${num("sp", "Очки навыков")}</div>`
+    ? `<div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${S.planet === R.OTHER ? fld("pname") + fld("pcode") + fld("pdesc", "wide") : ""}${fld("race")}${clsSel()}${fld("h")}${fld("w")}${faithSel()}${sigSel()}${num("cr", "Кредиты")}${num("sp", "Очки навыков")}</div>`
     : `<h2 class="nm">${esc(S.name || "Без имени")}</h2><p class="sub">${esc([S.race, R.profName(S), S.sex].filter(Boolean).join(" · ") || "—")}</p>
-       <dl class="facts">${fact("Дата рождения", S.dob)}${fact("Планета", `${R.planetName(S)} · ${S.planet}`)}${fact("Рост", S.h && S.h + " см")}${fact("Вес", S.w && S.w + " кг")}${fact("Вера", f ? `${f.name}: ${f.perk}, +1 ${short(f.attr)}` : "")}</dl>`;
+       <dl class="facts">${fact("Дата рождения", S.dob && (R.age(S.dob) !== null ? `${S.dob} · ${R.ageText(R.age(S.dob))}` : S.dob))}${fact("Планета", `${R.planetName(S)} · ${R.planetCode(S)}`)}${fact("Рост", S.h && S.h + " см")}${fact("Вес", S.w && S.w + " кг")}${fact("Вера", f ? `${f.name}: ${f.perk}, +1 ${short(f.attr)}` : "")}</dl>`;
   return `<section class="panel idc">${photo(m !== "view")}<div>${top}</div>
     <div class="strip">
       <div class="big"><small>Федеральный номер</small><span id="fid">${esc(R.fid(S))}</span></div>
@@ -280,6 +283,19 @@ function wizView() {
     + (last ? `<div style="margin-top:22px">${sheetBody("view")}</div>` : "");
 }
 
+/* ---------- главный экран для нового игрока ---------- */
+function welcomeView() {
+  const started = S.name.trim() || R.spent(S) || S.faith || S.cls;
+  return `<section class="panel welcome">
+    <h2>Новый Авантюрист</h2>
+    <h3>Добро пожаловать в Интергалактическое Авантюристское Бюро!</h3>
+    <p>ИАБ - крупнейшая организация по исполнению заказов по всей галактике.</p>
+    <p>Эта страница предназначена для передачи основной информации о вас для передачи в Бюро.</p>
+    <button class="pri big-btn" data-act="startwiz">${started ? "Продолжить заполнение" : "Начать заполнение"}</button>
+    <p class="fine">ИАБ - государственная организация. Если ваше поведение будет считано неподобающим, информация о ваших действиях будет передана в соответствующие органы.</p>
+  </section>`;
+}
+
 /* ---------- список игроков ---------- */
 // Простой пароль для игрока: без похожих символов (0/o, 1/l).
 const newPass = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), x => "abcdefghjkmnpqrstuvwxyz23456789"[x % 31]).join("");
@@ -315,6 +331,7 @@ function render() {
   let body = "";
   if (mode === "list") body = listView();
   else if (mode === "wiz") body = wizView();
+  else if (mode === "welcome") body = welcomeView();
   else if (mode === "edit") body = `<div class="panel toolbar" style="margin-bottom:14px"><button data-act="back">← Все игроки</button><span style="overflow-wrap:anywhere">логин: ${esc(editing)}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button data-act="peek"${peek ? ' class="pri"' : ""}>${peek ? "← Вернуться к правке" : "Глазами игрока"}</button>${peek ? "" : `<button data-act="pass">Сменить пароль</button><button class="warn" data-act="delask">Удалить игрока</button>`}</div></div>` + (peek ? peekView() : sheetBody("admin"));
   else body = sheetBody("player");
   app.innerHTML = body + banner() + saveBar();
@@ -336,11 +353,23 @@ function header() {
 async function home() {
   open = {}; peek = false; dirty = false; delArm = false; editing = "";
   if (ME.admin) { mode = "list"; list = await API.list(); }
-  else { S = await API.sheet(); mode = S.created ? "sheet" : "wiz"; step = 0; }
+  else { S = await API.sheet(); savedJSON = JSON.stringify(S); mode = S.created ? "sheet" : "welcome"; step = 0; }
   render();
 }
-const draft = () => { if (mode === "wiz") API.save(S).catch(err => toast(err.message, 1)); };
-const draftSoon = () => { clearTimeout(saveT); saveT = setTimeout(draft, 700); };
+// Черновик создания персонажа. Бесплатный Cloudflare KV даёт всего 1000 записей в сутки,
+// поэтому сохраняем только при переходе между шагами, при уходе со страницы
+// и раз в 30 секунд работы, и только если что-то изменилось.
+let savedJSON = "";
+const draft = () => {
+  if (mode !== "wiz" || !S) return;
+  const j = JSON.stringify(S);
+  if (j === savedJSON) return;
+  savedJSON = j;
+  API.save(S).catch(err => { savedJSON = ""; toast(err.message, 1); });
+};
+const draftSoon = () => { if (!saveT) saveT = setTimeout(() => { saveT = 0; draft(); }, 30000); };
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") draft(); });
+addEventListener("pagehide", draft);
 function markDirty() {
   if (dirty) return;
   dirty = true;
@@ -354,7 +383,16 @@ document.addEventListener("input", e => {
     // Только цифры, тире ставятся сами: 20510121 → 2051-01-21
     const d = t.value.replace(/\D/g, "").slice(0, 8);
     t.value = d.length > 6 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}-${d.slice(4)}` : d;
-    t.classList.toggle("bad", t.value.length === 10 && !R.dobOk(t.value));
+    const y = +t.value.slice(0, 4);
+    t.classList.toggle("bad", t.value.length === 10 && (!R.dobOk(t.value) || y < R.DOB_MIN || y > R.DOB_MAX));
+    const ag = $("#age"); if (ag) { S.dob = t.value; ag.textContent = ageLine(); }
+  }
+  if (t.dataset.k === "pcode") {
+    // Две латинские буквы, потом цифры; тире ставятся сами: kr071234 → KR-07-1234
+    let L = "", D = "";
+    for (const ch of t.value.toUpperCase().replace(/[^A-Z0-9]/g, "")) { if (L.length < 2) { if (/[A-Z]/.test(ch)) L += ch; } else if (/\d/.test(ch) && D.length < 6) D += ch; }
+    t.value = L + (D ? "-" + D.slice(0, 2) : "") + (D.length > 2 ? "-" + D.slice(2) : "");
+    t.classList.toggle("bad", t.value.length === 10 && !R.pcodeOk(t.value));
   }
   if (t.dataset.k === "h" || t.dataset.k === "w") t.value = t.value.replace(/\D/g, "").slice(0, 4);
   if (t.dataset.k) S[t.dataset.k] = t.dataset.n ? (parseInt(t.value) || 0) : t.value;
@@ -399,7 +437,7 @@ document.addEventListener("click", async e => {
         if (i > 0 && bad.length) {
           step = 0; render(); scrollTo(0, 0);
           $("#app .stepH").insertAdjacentHTML("afterend", `<div class="errs">${bad.map(x => `<p>${esc(x)}</p>`).join("")}</div>`);
-          if (!R.dobOk(S.dob)) $('#app [data-k="dob"]').classList.add("bad");
+          if (bad.some(x => x.startsWith("Дата"))) $('#app [data-k="dob"]').classList.add("bad");
           return toast("Сначала исправь досье", 1);
         }
         step = i; render(); scrollTo(0, 0); draft(); break; }
@@ -410,8 +448,9 @@ document.addEventListener("click", async e => {
       case "dclose": $("#dlg").close(); break;
       case "faith": S.faith = b.dataset.f; render(); draftSoon(); break;
       case "cls": S.cls = b.dataset.c; render(); draftSoon(); break;
+      case "startwiz": mode = "wiz"; step = 0; render(); scrollTo(0, 0); break;
       case "sig": S.sig = b.dataset.id; render(); draftSoon(); break;
-      case "register": clearTimeout(saveT); S = await API.save({ ...S, created: true }); mode = "sheet"; render(); scrollTo(0, 0); toast("Персонаж зарегистрирован в Бюро"); break;
+      case "register": clearTimeout(saveT); saveT = 0; S = await API.save({ ...S, created: true }); mode = "sheet"; render(); scrollTo(0, 0); toast("Персонаж зарегистрирован в Бюро"); break;
       case "up": {
         const x = R.SKILLS.find(k => k.id === b.dataset.id), now = R.skill(S, x.id);
         dialog(`<h2 class="stepH">Прокачать «${esc(x.name)}»?</h2><p class="hint">${esc(x.text)}</p>
