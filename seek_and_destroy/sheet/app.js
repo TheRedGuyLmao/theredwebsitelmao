@@ -253,9 +253,11 @@ const STEP = [
   () => {
     const c = R.classOf(S);
     return `<h2 class="stepH">Кто ты по жизни?</h2><p class="hint">Класс даёт постоянные прибавки и штрафы к навыкам и стартовое снаряжение. После регистрации сменить его сможет только мастер.</p>
-    <div class="faiths cls">${R.CLASSES.map(k => `<button class="fc${S.cls === k.id ? " on" : ""}" data-act="cls" data-c="${k.id}" aria-pressed="${S.cls === k.id}"><b>${esc(k.name)}</b><span>${esc(k.text)}</span>
-      <em class="mods">${modsText(k)}</em>
-      <small>${esc([...k.wpn.map(x => x.n), ...k.inv].join(", ") || "Без стартовых вещей")}${picksText(k) ? `<br>${picksText(k)}` : ""}</small></button>`).join("")}</div>
+    <div class="clist" role="radiogroup" aria-label="Класс">${R.CLASSES.map(k => `<button class="crow${S.cls === k.id ? " on" : ""}" data-act="cls" data-c="${k.id}" role="radio" aria-checked="${S.cls === k.id}">
+      <i class="dot" aria-hidden="true"></i>
+      <span class="cn"><b>${esc(k.name)}</b><span>${esc(k.text)}</span></span>
+      <span class="mods">${modsText(k)}</span>
+      <small>${esc([...k.wpn.map(x => x.n), ...k.inv].join(", ") || "Без стартовых вещей")}${picksText(k) ? `<em>${picksText(k)}</em>` : ""}</small></button>`).join("")}</div>
     ${c && (c.imp || c.spl) ? `<div class="banner" style="margin:18px 0 0">${esc(c.name)}: ${picksText(c)}. Это бесплатно — после регистрации скажи мастеру, что хочешь, и он добавит. Больше можно купить за кредиты.</div>` : ""}`;
   },
   () => `<h2 class="stepH">Какой ты?</h2><p class="hint">Пара честных строк в каждом поле — мастеру этого хватит, чтобы зацепить персонажа за сюжет.</p>
