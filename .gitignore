@@ -1,2 +1,5 @@
 # Заметки мастера со спойлерами — только локально
 seek_and_destroy/CLAUDE.md
+# Локальные секреты для wrangler dev
+.dev.vars
+.wrangler/

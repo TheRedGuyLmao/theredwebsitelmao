@@ -1,0 +1,12 @@
+# Эти файлы не отдаются посетителям сайта
+.git
+.github
+.claude
+.gitignore
+.assetsignore
+.dev.vars
+.wrangler
+node_modules
+worker
+wrangler.jsonc
+seek_and_destroy/CLAUDE.md

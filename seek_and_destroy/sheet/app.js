@@ -7,6 +7,7 @@ const pl = (n, f) => { const a = Math.abs(n) % 100, b = a % 10; return f[a > 10 
 
 let API, ME, S, mode = "", step = 0, dirty = false, editing = "", list = [], delArm = false, saveT;
 let open = {}; // какие списки инвентаря сейчас открыты для правки
+let peek = false; // мастер смотрит на лист глазами игрока
 
 function toast(t, bad) {
   const e = $("#toast");
@@ -273,10 +274,18 @@ function render() {
   let body = "";
   if (mode === "list") body = listView();
   else if (mode === "wiz") body = wizView();
-  else if (mode === "edit") body = `<div class="panel toolbar" style="margin-bottom:14px"><button data-act="back">← Все игроки</button><span style="overflow-wrap:anywhere">${esc(editing)}</span><button class="warn" data-act="delask">Удалить лист</button></div>` + sheetBody("admin");
+  else if (mode === "edit") body = `<div class="panel toolbar" style="margin-bottom:14px"><button data-act="back">← Все игроки</button><span style="overflow-wrap:anywhere">${esc(editing)}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button data-act="peek"${peek ? ' class="pri"' : ""}>${peek ? "← Вернуться к правке" : "Глазами игрока"}</button>${peek ? "" : `<button class="warn" data-act="delask">Удалить лист</button>`}</div></div>` + (peek ? peekView() : sheetBody("admin"));
   else body = sheetBody("player");
   app.innerHTML = body + banner() + saveBar();
   scrollTo(0, y);
+}
+// Лист так, как его видит игрок: без заметок мастера, всё закрыто от нажатий.
+function peekView() {
+  const keep = S, keepOpen = open;
+  S = R.forPlayer(S); open = {};
+  const html = `<div class="banner">Так лист видит игрок${dirty ? " (с вашими несохранёнными правками)" : ""}. Здесь ничего нельзя изменить.${keep.created ? "" : " Игрок ещё не закончил создание персонажа."}</div><div inert class="peek">${sheetBody("player")}</div>`;
+  S = keep; open = keepOpen;
+  return html;
 }
 function header() {
   $("#who").innerHTML = API.demo
@@ -284,7 +293,7 @@ function header() {
     : `<span>${esc(ME.email)}${ME.admin ? " · мастер" : ""}</span>`;
 }
 async function home() {
-  open = {}; dirty = false; delArm = false; editing = "";
+  open = {}; peek = false; dirty = false; delArm = false; editing = "";
   if (ME.admin) { mode = "list"; list = await API.list(); }
   else { S = await API.sheet(); mode = S.created ? "sheet" : "wiz"; step = 0; }
   render();
@@ -374,6 +383,7 @@ document.addEventListener("click", async e => {
         const next = JSON.parse(JSON.stringify(S)); next.rk[b.dataset.id] = (next.rk[b.dataset.id] || 0) + 1;
         S = await API.save(next); dirty = false; render(); toast("Навык прокачан"); break;
       }
+      case "peek": peek = !peek; delArm = false; render(); scrollTo(0, 0); break;
       case "invt": open[b.dataset.l] = !open[b.dataset.l]; render(); break;
       case "lvl": {
         const v = S.lvl + d; if (v < 1 || v > R.MAX_LVL) return;
@@ -391,7 +401,7 @@ document.addEventListener("click", async e => {
       case "del": S[b.dataset.l].splice(+b.dataset.i, 1); dirty = true; render(); break;
       case "savesheet": S = mode === "edit" ? await API.put(editing, S) : await API.save(S); dirty = false; render(); toast("Сохранено"); break;
       case "revert": dirty = false; S = mode === "edit" ? await API.load(editing) : await API.sheet(); render(); break;
-      case "open": open = {}; editing = b.dataset.e; S = await API.load(editing); mode = "edit"; dirty = false; delArm = false; render(); scrollTo(0, 0); break;
+      case "open": open = {}; peek = false; editing = b.dataset.e; S = await API.load(editing); mode = "edit"; dirty = false; delArm = false; render(); scrollTo(0, 0); break;
       case "back":
         if (dirty && !b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Не сохранено! Ещё раз — выйти"; return; }
         await home(); scrollTo(0, 0); break;

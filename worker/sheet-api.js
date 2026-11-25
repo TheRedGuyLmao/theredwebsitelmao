@@ -1,7 +1,7 @@
-// Серверная часть чарника (Cloudflare Pages Functions).
+// Серверная часть чарника. Её вызывает worker/index.js для адресов /seek_and_destroy/sheet/api/...
 // Вход — через Cloudflare Access: он сам показывает страницу логина,
 // а сюда присылает подписанный токен с почтой игрока. Мы проверяем подпись.
-import { normalize, playerUpdate, adminUpdate, forPlayer, summary, blank } from "../../../../seek_and_destroy/sheet/rules.js";
+import { normalize, playerUpdate, adminUpdate, forPlayer, summary, blank } from "../seek_and_destroy/sheet/rules.js";
 
 const J = (d, status = 200) => new Response(JSON.stringify(d), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
@@ -44,13 +44,13 @@ const KEY = e => "s:" + e;
 const read = async (env, e) => { const v = await env.SHEETS.get(KEY(e), "json"); return v ? normalize(v) : null; };
 const write = (env, e, s) => env.SHEETS.put(KEY(e), JSON.stringify(s));
 
-export async function onRequest({ request, env, params }) {
+// path — часть адреса после /api/, например "me" или "admin/sheets".
+export async function handleApi(request, env, path) {
   if (!env.SHEETS) return ERR("Не подключено хранилище SHEETS (KV)", 500);
   const email = await whoIs(request, env);
   if (!email) return ERR("Нужно войти через Cloudflare Access", 401);
   const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(/[,\s]+/).filter(Boolean);
   const admin = admins.includes(email);
-  const path = [].concat(params.path || []).join("/");
   const m = request.method;
   const url = new URL(request.url);
   const body = async () => { try { return await request.json(); } catch { return null; } };

@@ -1,0 +1,24 @@
+// Настройки Worker сайта theredwebsite.com.
+// Сайт по-прежнему — просто файлы из этого репозитория; Worker нужен только для сервера чарника.
+{
+  // ВАЖНО: имя должно совпадать с именем Worker в панели Cloudflare (Workers & Pages).
+  "name": "theredwebsitelmao",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    // Worker запускается только для сервера чарника, всё остальное отдаётся как раньше.
+    "run_worker_first": ["/seek_and_destroy/sheet/api/*"]
+  },
+
+  // Хранилище листов. Создайте KV в панели и вставьте сюда его ID (см. seek_and_destroy/README.md).
+  "kv_namespaces": [
+    { "binding": "SHEETS", "id": "ВСТАВЬТЕ_ID_ХРАНИЛИЩА_KV" }
+  ],
+
+  // ADMIN_EMAILS, TEAM_DOMAIN и POLICY_AUD задаются в панели Cloudflare,
+  // чтобы почты не попали в публичный репозиторий. Это не даёт их стереть при публикации:
+  "keep_vars": true
+}
