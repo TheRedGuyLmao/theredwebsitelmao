@@ -465,7 +465,15 @@ document.addEventListener("click", async e => {
         S = await API.save(next); dirty = false; render(); toast("Навык прокачан"); break;
       }
       case "peek": peek = !peek; delArm = false; render(); scrollTo(0, 0); break;
-      case "invt": open[b.dataset.l] = !open[b.dataset.l]; render(); break;
+      case "invt": {
+        const closing = open[b.dataset.l];
+        open[b.dataset.l] = !closing;
+        // «Готово» сразу сохраняет — иначе правки пропадали при обновлении страницы.
+        if (closing && dirty && (mode === "edit" || mode === "sheet")) {
+          S = mode === "edit" ? await API.put(editing, S) : await API.save(S); dirty = false; toast("Сохранено");
+        }
+        render(); break;
+      }
       case "lvl": {
         const v = S.lvl + d; if (v < 1 || v > R.MAX_LVL) return;
         S.lvl = v; S.sp = Math.max(0, S.sp + d); dirty = true; render();
