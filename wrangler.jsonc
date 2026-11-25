@@ -15,7 +15,7 @@
 
   // Хранилище листов. Создайте KV в панели и вставьте сюда его ID (см. seek_and_destroy/README.md).
   "kv_namespaces": [
-    { "binding": "SHEETS", "id": "ВСТАВЬТЕ_ID_ХРАНИЛИЩА_KV" }
+    { "binding": "SHEETS", "id": "7c61bfe1fa5b4eaea2ead20a052d8246" }
   ],
 
   // ADMIN_EMAILS, TEAM_DOMAIN и POLICY_AUD задаются в панели Cloudflare,
