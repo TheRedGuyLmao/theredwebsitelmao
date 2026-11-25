@@ -58,6 +58,30 @@ export const ATTRS = [
 
 export const SKILLS = ATTRS.flatMap(a => a.skills.map(([id, name, text]) => ({ id, name, text, attr: a.id })));
 
+// Классы. mods — постоянные прибавки к навыкам (id навыка: число),
+// wpn/inv — что выдаётся при регистрации, imp/spl — сколько имплантов/заклинаний на выбор игрок может
+// бесплатно попросить у мастера (больше — уже покупать за кредиты). Добавляет их мастер.
+export const CLASSES = [
+  { id: "adv", name: "Авантюрист", text: "Самый скучный вариант, когда не хочется выбирать.",
+    mods: { equi: 1, will: 1, auth: -1 }, wpn: [], inv: ["Телефон"], imp: 1, spl: 0 },
+  { id: "gun", name: "Стрелок", text: "Эксперт в оружии, глаз-алмаз, запах пороха завораживает.",
+    mods: { per: 1, auth: 1, med: -1 }, wpn: [{ n: "Пистолет Hugger-22", d: "Магазин: 10/10 патр." }], inv: ["Патроны 9 мм (30 шт.)"], imp: 1, spl: 0 },
+  { id: "tech", name: "Техник", text: "Золотые руки, умник, собирай крутые прибамбасы.",
+    mods: { hand: 1, an: 1, end: -1 }, wpn: [], inv: ["Пояс с инструментами", "Самодельное радио", "Лёгкие материалы"], imp: 2, spl: 0 },
+  { id: "mage", name: "Маг", text: "На одной волне с маной, используй фантазию в свою пользу.",
+    mods: { mag: 1, enc: 1, str: -1 }, wpn: [], inv: ["Большая шляпа колдуна", "Зелье лечения", "Пергамент и карандаш"], imp: 0, spl: 3 },
+  { id: "det", name: "Детектив", text: "Логический склад ума, находи связь там, где другие слепы.",
+    mods: { logic: 1, inl: 1, elc: 1, enc: -2 }, wpn: [{ n: "Карманный револьвер", d: "Барабан: 5/5 патр." }], inv: ["Журнал заметок", "Патроны .358 магнум (15 шт.)"], imp: 1, spl: 0 },
+  { id: "bers", name: "Берсерк", text: "Да кому нужны роскошества будущего? Твоих кулаков достаточно!",
+    mods: { str: 1, pain: 1, sth: -1 }, wpn: [{ n: "Кулаки", d: "Что тебе ещё нужно для счастья?" }], inv: [], imp: 0, spl: 1 },
+  { id: "rogue", name: "Плут", text: "Скрытность — твоё второе имя. Пропадай перед глазами у врагов. Кради, что неровно лежит.",
+    mods: { sth: 1, hand: 1, pain: -1 }, wpn: [], inv: ["Воровские инструменты", "Антикварная монета", "Оценочный инструмент"], imp: 0, spl: 1 },
+  { id: "medic", name: "Медик", text: "Клятва Гиппократа.",
+    mods: { med: 2, elc: -1 }, wpn: [], inv: ["Набор первой помощи (5 использований)", "Медицинский анализатор", "Шприц с морфином"], imp: 0, spl: 0 },
+  { id: "chum", name: "Чумба", text: "Плоть слаба, чипуйся!",
+    mods: { end: 1, equi: 1, mag: -1 }, wpn: [], inv: [], imp: 3, spl: 0 },
+];
+
 const TEXT = ["name", "sex", "dob", "planet", "pname", "pdesc", "race", "prof", "h", "w", "look", "photo",
   "ideals", "traits", "bonds", "flaws", "bio", "why", "notes", "gm"];
 // Что игрок может менять сам после регистрации (плюс инвентарь и кредиты):
@@ -65,7 +89,7 @@ const AFTER = ["look", "photo", "ideals", "traits", "bonds", "flaws", "bio", "wh
 
 export const blank = () => ({
   created: false, lvl: 1,
-  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", race: "", prof: "", h: "", w: "",
+  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", race: "", prof: "", cls: "", h: "", w: "",
   look: "", photo: "",
   attr: { int: 1, psy: 1, phy: 1, mot: 1 }, faith: "", sig: "",
   ideals: "", traits: "", bonds: "", flaws: "", bio: "", why: "",
@@ -89,6 +113,7 @@ export function normalize(o) {
   s.cr = int(o.cr, -999999999, 999999999, 100);
   for (const a of ATTRS) s.attr[a.id] = int(o.attr?.[a.id], 1, 10, 1);
   s.faith = FAITHS.some(f => f.id === o.faith) ? o.faith : "";
+  s.cls = CLASSES.some(c => c.id === o.cls) ? o.cls : "";
   s.sig = SKILLS.some(x => x.id === o.sig) ? o.sig : "";
   for (const x of SKILLS) { const r = int(o.rk?.[x.id], 0, 20, 0); if (r) s.rk[x.id] = r; }
   const list = v => Array.isArray(v) ? v.slice(0, 200) : [];
@@ -103,11 +128,16 @@ export function normalize(o) {
 export const spent = s => ATTRS.reduce((a, x) => a + s.attr[x.id] - MIN, 0);
 export const faithOf = s => FAITHS.find(f => f.id === s.faith);
 export const attrOf = id => SKILLS.find(x => x.id === id)?.attr;
+export const classOf = s => CLASSES.find(c => c.id === s.cls);
+// Профессия в листе — это класс (у старых листов мог остаться свободный текст).
+export const profName = s => classOf(s)?.name || s.prof;
+// Прибавка класса к навыку (может быть отрицательной).
+export const mod = (s, id) => classOf(s)?.mods[id] || 0;
 export const eff = (s, k) => s.attr[k] + (faithOf(s)?.attr === k ? 1 : 0);
 export const cap = (s, id) => s.attr[attrOf(id)] + (s.sig === id ? 1 : 0);
-export const skill = (s, id) => eff(s, attrOf(id)) + (s.rk[id] || 0);
+export const skill = (s, id) => Math.max(0, eff(s, attrOf(id)) + (s.rk[id] || 0) + mod(s, id));
 // Потолок навыка: значение, когда в него вложено максимум очков.
-export const ceil = (s, id) => eff(s, attrOf(id)) + cap(s, id);
+export const ceil = (s, id) => Math.max(0, eff(s, attrOf(id)) + cap(s, id) + mod(s, id));
 export const humanity = s => Math.max(0, 100 - s.imp.reduce((a, i) => a + (parseInt(i.c) || 0), 0));
 export const planetName = s => s.planet === OTHER ? (s.pname.trim() || "Другая") : PLANETS.find(p => p[0] === s.planet)?.[1] || "";
 export function fid(s) {
@@ -137,6 +167,7 @@ export function creationErrors(s) {
   for (const a of ATTRS) if (s.attr[a.id] < MIN || s.attr[a.id] > MAX) e.push(`${a.name}: от ${MIN} до ${MAX}`);
   if (spent(s) !== POOL) e.push(`Распределено ${spent(s)} из ${POOL} очков характеристик`);
   if (!faithOf(s)) e.push("Не выбрана вера");
+  if (!classOf(s)) e.push("Не выбран класс");
   if (!s.sig) e.push("Не выбран коронный навык");
   return e;
 }
@@ -149,13 +180,17 @@ export function playerUpdate(oldS, inc) {
   if (!old.created) {
     for (const k of ["name", "sex", "dob", "planet", "pname", "pdesc", "race", "prof", "h", "w", ...AFTER]) n[k] = inc[k];
     n.inv = inc.inv; n.wpn = inc.wpn;
-    n.attr = inc.attr; n.faith = inc.faith; n.sig = inc.sig;
+    n.attr = inc.attr; n.faith = inc.faith; n.sig = inc.sig; n.cls = inc.cls;
+    const c = classOf(n); // импланты и заклинания игрок сам не добавляет — это делает мастер
     for (const a of ATTRS) if (n.attr[a.id] > MAX) throw new Error(`${a.name} не может быть больше ${MAX}`);
     if (spent(n) > POOL) throw new Error(`Можно распределить только ${POOL} очков`);
     if (inc.created) {
       const e = creationErrors(n);
       if (e.length) throw new Error(e.join(". "));
       n.created = true;
+      // Стартовое снаряжение класса.
+      n.wpn = [...c.wpn.map(x => ({ ...x })), ...n.wpn];
+      n.inv = [...c.inv, ...n.inv];
     }
     return n;
   }
@@ -180,5 +215,5 @@ export const adminUpdate = (oldS, inc) => normalize(inc);
 export const forPlayer = s => { const c = normalize(s); delete c.gm; return c; };
 
 export const summary = (login, s) => ({
-  login, name: s.name, lvl: s.lvl, created: s.created, race: s.race, prof: s.prof, sp: s.sp, photo: s.photo ? 1 : 0,
+  login, name: s.name, lvl: s.lvl, created: s.created, race: s.race, prof: profName(s), sp: s.sp, photo: s.photo ? 1 : 0,
 });

@@ -137,6 +137,7 @@ const atlasDlg = () => dialog(`<h2 class="stepH">Планеты</h2><p class="hi
   <div class="atlas">${R.PLANETS.map(([c, n, sys, t]) => `<div class="box${S.planet === c ? " on" : ""}"><h3>${esc(n)}<span>${sys ? `${esc(sys)} · ${esc(c)}` : "придумываешь сам"}</span></h3><p>${esc(t)}</p>
     <button data-act="pick" data-c="${esc(c)}" style="margin-top:10px"${S.planet === c ? " disabled" : ""}>${S.planet === c ? "Выбрана" : "Выбрать"}</button></div>`).join("")}</div>`);
 const faithSel = () => `<label>Вера<select data-k="faith">${opt("", "Не выбрана", S.faith)}${R.FAITHS.map(f => opt(f.id, `${f.name} — ${f.perk}`, S.faith)).join("")}</select></label>`;
+const clsSel = () => `<label>Класс<select data-k="cls">${opt("", "Не выбран", S.cls)}${R.CLASSES.map(c => opt(c.id, c.name, S.cls)).join("")}</select></label>`;
 const sigSel = () => `<label>Коронный навык<select data-k="sig">${opt("", "Не выбран", S.sig)}${R.SKILLS.map(x => opt(x.id, x.name, S.sig)).join("")}</select></label>`;
 const short = k => R.ATTRS.find(a => a.id === k).short;
 function photo(can) {
@@ -154,7 +155,8 @@ function attrGrid(m) {
       let ctl = "";
       if (m === "player" && S.sp > 0) ctl = `<button data-act="up" data-id="${id}"${r >= c ? " disabled" : ""} aria-label="Прокачать: ${n}" style="width:38px;padding:0;font-size:18px">+</button>`;
       if (m === "admin") ctl = `<div class="step"><button data-act="ark" data-id="${id}" data-d="-1" aria-label="${n} меньше">−</button><span class="num">${r}</span><button data-act="ark" data-id="${id}" data-d="1" aria-label="${n} больше">+</button></div>`;
-      const note = m === "pick" ? (sig ? "коронный" : "") : `${sig ? "коронный · " : ""}вложено ${r} из ${c}`;
+      const md = R.mod(S, id), cl = md ? `класс ${md > 0 ? "+" : "−"}${Math.abs(md)}` : "";
+      const note = m === "pick" ? [sig ? "коронный" : "", cl].filter(Boolean).join(" · ") : [sig ? "коронный" : "", `вложено ${r} из ${c}`, cl].filter(Boolean).join(" · ");
       const tot = m === "pick" ? R.skill(S, id) : `${R.skill(S, id)}<small title="Потолок навыка">/${R.ceil(S, id)}</small>`;
       const inner = `${sig || m === "pick" ? `<span class="star" aria-hidden="true">★</span>` : ""}<span class="sn">${n}${note ? `<small>${note}</small>` : ""}</span>${ctl}<span class="tot">${tot}</span>`;
       return m === "pick"
@@ -168,8 +170,8 @@ function idCard(m) {
   const A = m === "admin", f = R.faithOf(S), h = R.humanity(S);
   const fact = (l, v) => `<div><dt>${l}</dt><dd>${esc(v || "—")}</dd></div>`;
   const top = A
-    ? `<div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${S.planet === R.OTHER ? fld("pname") + fld("pdesc", "wide") : ""}${fld("race")}${fld("prof")}${fld("h")}${fld("w")}${faithSel()}${sigSel()}${num("cr", "Кредиты")}${num("sp", "Очки навыков")}</div>`
-    : `<h2 class="nm">${esc(S.name || "Без имени")}</h2><p class="sub">${esc([S.race, S.prof, S.sex].filter(Boolean).join(" · ") || "—")}</p>
+    ? `<div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${S.planet === R.OTHER ? fld("pname") + fld("pdesc", "wide") : ""}${fld("race")}${clsSel()}${fld("h")}${fld("w")}${faithSel()}${sigSel()}${num("cr", "Кредиты")}${num("sp", "Очки навыков")}</div>`
+    : `<h2 class="nm">${esc(S.name || "Без имени")}</h2><p class="sub">${esc([S.race, R.profName(S), S.sex].filter(Boolean).join(" · ") || "—")}</p>
        <dl class="facts">${fact("Дата рождения", S.dob)}${fact("Планета", `${R.planetName(S)} · ${S.planet}`)}${fact("Рост", S.h && S.h + " см")}${fact("Вес", S.w && S.w + " кг")}${fact("Вера", f ? `${f.name}: ${f.perk}, +1 ${short(f.attr)}` : "")}</dl>`;
   return `<section class="panel idc">${photo(m !== "view")}<div>${top}</div>
     <div class="strip">
@@ -199,11 +201,11 @@ function listEdit(k, add) {
   return `<div>${rows.join("")}<button class="add" data-act="addl" data-l="${k}">${add}</button></div>`;
 }
 // Список с кнопкой «Изменить»: сначала просто читается, править — по кнопке.
-function listBox(k, title, add, can) {
+function listBox(k, title, add, can, note = "") {
   const items = DESC[k]
     ? S[k].filter(x => x.n || x.d).map(x => `<li><b>${esc(x.n || "Без названия")}${k === "imp" && x.c ? ` <em>−${esc(x.c)} человечности</em>` : ""}</b>${x.d ? `<span>${esc(x.d)}</span>` : ""}</li>`)
     : S[k].filter(Boolean).map(x => `<li>${esc(x)}</li>`);
-  return `<div class="box"><h3>${title}${can ? `<button class="sm${open[k] ? " pri" : ""}" data-act="invt" data-l="${k}">${open[k] ? "Готово" : "Изменить"}</button>` : ""}</h3>
+  return `<div class="box"><h3>${title}${can ? `<button class="sm${open[k] ? " pri" : ""}" data-act="invt" data-l="${k}">${open[k] ? "Готово" : "Изменить"}</button>` : ""}</h3>${note}
     ${open[k] && can ? listEdit(k, add) : items.length ? `<ul class="ilist">${items.join("")}</ul>` : `<p class="none">Пусто</p>`}</div>`;
 }
 const textBox = k => `<div class="box${WIDE.includes(k) ? " wide" : ""}"><h3>${FL[k][0]}</h3>${S[k] ? `<p>${esc(S[k])}</p>` : `<p class="none">—</p>`}</div>`;
@@ -211,22 +213,27 @@ const textBox = k => `<div class="box${WIDE.includes(k) ? " wide" : ""}"><h3>${F
 function sheetBody(m) {
   const A = m === "admin", P = m === "player", V = m === "view";
   const hint = P ? (S.sp ? `У тебя ${S.sp} ${pl(S.sp, ["очко", "очка", "очков"])} навыков: жми «+» у навыка. Справа — значение навыка и его потолок.` : "Очки навыков выдаёт мастер. Справа — значение навыка и его потолок. Характеристики заморожены.")
-    : A ? "Мастер меняет всё: характеристики (заголовки) и вложенные очки навыков (строки). Число справа — значение навыка и его потолок." : "Навык = характеристика + вложенные очки. Справа — значение и потолок.";
+    : A ? "Мастер меняет всё: характеристики (заголовки) и вложенные очки навыков (строки). Число справа — значение навыка и его потолок." : "Навык = характеристика + вложенные очки + бонус класса. Справа — значение и потолок.";
   const pers = ["ideals", "traits", "bonds", "flaws", "look", "bio", "why"];
   const ownPlanet = !A && S.planet === R.OTHER ? `<div class="box wide"><h3>${esc(R.planetName(S))}<span>родная планета</span></h3><p>${esc(S.pdesc || "—")}</p></div>` : "";
   const invView = `<div class="two">${listBox("wpn", "Оружие", "+ Добавить оружие", !V)}${listBox("inv", "Предметы", "+ Добавить предмет", !V)}</div>`;
   return lvlBand(m) + idCard(m)
     + `<h2>Инвентарь</h2>${P ? `<p class="hint">Нажми «Изменить», чтобы добавить или убрать вещи, потом «Сохранить» внизу.</p>` : ""}${invView}`
     + `<h2>Характеристики и навыки</h2><p class="hint">${hint}</p>${attrGrid(A ? "admin" : P ? "player" : "view")}`
-    + `<div class="two" style="margin-top:36px">${listBox("imp", "Киберимпланты", "+ Добавить имплант", A)}${listBox("spl", "Заклинания", "+ Добавить заклинание", A)}</div>`
+    + `<div class="two" style="margin-top:36px">${listBox("imp", "Киберимпланты", "+ Добавить имплант", A, freeNote("imp", R.classOf(S)))}${listBox("spl", "Заклинания", "+ Добавить заклинание", A, freeNote("spl", R.classOf(S)))}</div>`
     + `<h2>Личность</h2><div class="two">${ownPlanet}${V ? pers.map(textBox).join("") : [...pers, "notes", ...(A ? ["gm"] : [])].map(k => fld(k, WIDE.includes(k) ? "wide" : "")).join("")}</div>`;
 }
 
 /* ---------- мастер создания ---------- */
-const STEPS = ["Кто ты", "Внешность", "Характеристики", "Вера", "Коронный навык", "Характер", "История", "Проверка"];
+const STEPS = ["Кто ты", "Внешность", "Характеристики", "Вера", "Коронный навык", "Класс", "Характер", "История", "Проверка"];
+const sname = id => R.SKILLS.find(x => x.id === id).name;
+const modsText = c => Object.entries(c.mods).map(([id, v]) => `<span class="${v > 0 ? "up" : "down"}">${v > 0 ? "+" : "−"}${Math.abs(v)} ${esc(sname(id))}</span>`).join("");
+const picksText = c => [c.imp ? `${c.imp} ${pl(c.imp, ["имплант", "импланта", "имплантов"])} на выбор` : "", c.spl ? `${c.spl} ${pl(c.spl, ["заклинание", "заклинания", "заклинаний"])} на выбор` : ""].filter(Boolean).join(", ");
+// Что класс даёт бесплатно на выбор — игрок просит мастера, мастер добавляет.
+const freeNote = (k, c) => c?.[k] ? `<p class="hint" style="margin:0 0 8px">Класс ${esc(c.name)}: ${c[k]} ${k === "imp" ? pl(c[k], ["имплант", "импланта", "имплантов"]) : pl(c[k], ["заклинание", "заклинания", "заклинаний"])} на выбор бесплатно, добавляет мастер. Больше — за кредиты.</p>` : "";
 const STEP = [
   () => `<h2 class="stepH">Кто ты?</h2><p class="hint">Основное из досье. После регистрации эти данные меняет только мастер.</p>
-    <div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${planetInfo()}${fld("race")}${fld("prof")}${fld("h")}${fld("w")}</div>`,
+    <div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${planetInfo()}${fld("race")}${fld("h")}${fld("w")}</div>`,
   () => `<h2 class="stepH">Как ты выглядишь?</h2><p class="hint">Портрет и описание можно поменять и после регистрации.</p>
     <div class="idc">${photo(true)}<div class="f">${fld("look", "wide")}</div></div>`,
   () => {
@@ -242,7 +249,15 @@ const STEP = [
   },
   () => `<h2 class="stepH">Во что ты веришь?</h2><p class="hint">Вера даёт постоянный пассивный бонус +1 к одной характеристике. Выбрать можно любую, но после регистрации сменить её сможет только мастер.</p>
     <div class="faiths">${R.FAITHS.map(f => `<button class="fc${S.faith === f.id ? " on" : ""}" data-act="faith" data-f="${f.id}" aria-pressed="${S.faith === f.id}"><b>${f.name}</b><em>${f.perk}: +1 ${short(f.attr)}</em><span>${f.text}</span></button>`).join("")}</div>`,
-  () => `<h2 class="stepH">Коронный навык</h2><p class="hint">Твоя специальность. Его предел прокачки на 1 выше, чем у остальных. Числа справа — значения навыков с учётом характеристик и веры.</p>${attrGrid("pick")}`,
+  () => `<h2 class="stepH">Коронный навык</h2><p class="hint">Твоя специальность. Его предел прокачки на 1 выше, чем у остальных. Числа справа — значения навыков с учётом характеристик и веры (бонусы класса добавятся на следующем шаге).</p>${attrGrid("pick")}`,
+  () => {
+    const c = R.classOf(S);
+    return `<h2 class="stepH">Кто ты по жизни?</h2><p class="hint">Класс даёт постоянные прибавки и штрафы к навыкам и стартовое снаряжение. После регистрации сменить его сможет только мастер.</p>
+    <div class="faiths cls">${R.CLASSES.map(k => `<button class="fc${S.cls === k.id ? " on" : ""}" data-act="cls" data-c="${k.id}" aria-pressed="${S.cls === k.id}"><b>${esc(k.name)}</b><span>${esc(k.text)}</span>
+      <em class="mods">${modsText(k)}</em>
+      <small>${esc([...k.wpn.map(x => x.n), ...k.inv].join(", ") || "Без стартовых вещей")}${picksText(k) ? `<br>${picksText(k)}` : ""}</small></button>`).join("")}</div>
+    ${c && (c.imp || c.spl) ? `<div class="banner" style="margin:18px 0 0">${esc(c.name)}: ${picksText(c)}. Это бесплатно — после регистрации скажи мастеру, что хочешь, и он добавит. Больше можно купить за кредиты.</div>` : ""}`;
+  },
   () => `<h2 class="stepH">Какой ты?</h2><p class="hint">Пара честных строк в каждом поле — мастеру этого хватит, чтобы зацепить персонажа за сюжет.</p>
     <div class="two">${fld("ideals")}${fld("traits")}${fld("bonds")}${fld("flaws")}</div>`,
   () => `<h2 class="stepH">Твоя история</h2><p class="hint">Откуда ты и как оказался там, где начинается игра.</p><div class="f">${fld("bio", "wide")}${fld("why", "wide")}</div>`,
@@ -250,7 +265,7 @@ const STEP = [
     const e = R.creationErrors(S);
     return `<h2 class="stepH">Проверка</h2>${e.length
       ? `<div class="errs">${e.map(x => `<p>${esc(x)}</p>`).join("")}</div>`
-      : `<p class="hint">Всё готово. После регистрации характеристики, вера и коронный навык будут заморожены, а данные досье будет менять только мастер.</p>`}`;
+      : `<p class="hint">Всё готово. После регистрации характеристики, вера, класс и коронный навык будут заморожены, а данные досье будет менять только мастер. Стартовое снаряжение класса появится в инвентаре.</p>`}`;
   },
 ];
 function wizView() {
@@ -392,6 +407,7 @@ document.addEventListener("click", async e => {
       case "pick": S.planet = b.dataset.c; draftSoon(); if (S.planet === R.OTHER) planetDlg(); else $("#dlg").close(); break;
       case "dclose": $("#dlg").close(); break;
       case "faith": S.faith = b.dataset.f; render(); draftSoon(); break;
+      case "cls": S.cls = b.dataset.c; render(); draftSoon(); break;
       case "sig": S.sig = b.dataset.id; render(); draftSoon(); break;
       case "register": clearTimeout(saveT); S = await API.save({ ...S, created: true }); mode = "sheet"; render(); scrollTo(0, 0); toast("Персонаж зарегистрирован в Бюро"); break;
       case "up": {
