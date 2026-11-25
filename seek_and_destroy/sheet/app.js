@@ -61,14 +61,14 @@ function demo() {
   let db; try { db = JSON.parse(localStorage.getItem(K)); } catch {}
   if (!db || !db.s || !db.users) db = seed();
   const w = () => { try { localStorage.setItem(K, JSON.stringify(db)); } catch {} };
-  const me = () => db.role === "admin" ? "мастер" : "игрок";
+  const me = () => db.role === "admin" ? "theredguylmao" : "игрок";
   const later = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 50));
   return {
     demo: true,
     setRole(r) { db.role = r; w(); },
     reset() { db = seed(); w(); },
-    me: () => later({ login: me(), admin: db.role === "admin" }),
-    addUser: async (l, p) => { l = String(l).trim().toLowerCase(); if (l.length < 2) throw new Error("Логин: минимум 2 символа"); if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); if (db.users.includes(l) || l === "мастер") throw new Error("Такой игрок уже есть"); db.users.push(l); w(); return later({ login: l }); },
+    me: () => later({ login: me(), admin: db.role === "admin", name: db.role === "admin" ? "TheRedGuyLmao" : me() }),
+    addUser: async (l, p) => { l = String(l).trim().toLowerCase(); if (l.length < 2) throw new Error("Логин: минимум 2 символа"); if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); if (db.users.includes(l) || l === "theredguylmao") throw new Error("Такой игрок уже есть"); db.users.push(l); w(); return later({ login: l }); },
     setPass: async (l, p) => { if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); return later({ ok: true }); },
     sheet: () => later(R.forPlayer(db.s[me()] || R.blank())),
     save: async s => { const n = R.playerUpdate(db.s[me()], s); db.s[me()] = n; w(); return later(R.forPlayer(n)); },
@@ -314,7 +314,7 @@ function peekView() {
 function header() {
   $("#who").innerHTML = API.demo
     ? `<span>Демо:</span><button data-act="role" data-r="player" class="${ME.admin ? "" : "on"}">Игрок</button><button data-act="role" data-r="admin" class="${ME.admin ? "on" : ""}">Мастер</button><button data-act="reset">Сбросить</button>`
-    : ME ? `<span>${esc(ME.login)}${ME.admin ? "" : " · игрок"}</span><button data-act="logout">Выйти</button>` : "";
+    : ME ? `<span>${esc(ME.admin ? `${ME.name || ME.login} [мастер]` : `${ME.login} · игрок`)}</span><button data-act="logout">Выйти</button>` : "";
 }
 async function home() {
   open = {}; peek = false; dirty = false; delArm = false; editing = "";
@@ -451,7 +451,12 @@ document.addEventListener("submit", async e => {
       list = await API.list(); render(); credDlg(r.login, v.password, "Игрок создан");
     }
   } catch (err) {
-    if (f.dataset.form === "login") app.innerHTML = loginView(err.message); else toast(err.message, 1);
+    if (f.dataset.form === "login") {
+      // Пароль подошёл, но браузер не сохранил вход (например, сайт открыт не по https) — не делаем вид, что вошли.
+      const saved = ME && err.message === "Нужно войти";
+      ME = null; header();
+      app.innerHTML = loginView(saved ? "Пароль верный, но браузер не сохранил вход. Откройте страницу по адресу, начинающемуся с https://, и войдите ещё раз." : err.message);
+    } else toast(err.message, 1);
   }
 });
 

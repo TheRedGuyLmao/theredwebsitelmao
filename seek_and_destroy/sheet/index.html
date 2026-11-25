@@ -2,6 +2,10 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
+<script>
+// Вход работает только по https (кука входа защищённая) — открытый по http адрес сразу переводим на https.
+if (location.protocol === "http:" && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) location.replace("https:" + location.href.slice(5));
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Чарник авантюриста ИАБ</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">

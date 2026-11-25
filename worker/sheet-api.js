@@ -1,7 +1,7 @@
 // Серверная часть чарника. Её вызывает worker/index.js для адресов /seek_and_destroy/sheet/api/...
 //
 // Вход — по логину и паролю. Игроков создаёт мастер в своей панели.
-// Мастер входит под логином «мастер» с паролем из секрета GM_PASSWORD (задаётся в панели Cloudflare).
+// Мастер входит под логином TheRedGuyLmao (регистр не важен) с паролем из секрета GM_PASSWORD (задаётся в панели Cloudflare).
 // Пароли игроков хранятся только как хэш (PBKDF2), сам пароль сервер не помнит.
 //
 // Хранилище KV (привязка SHEETS):
@@ -10,7 +10,8 @@
 //   f:<логин>  счётчик неудачных попыток входа (живёт 15 минут)
 import { normalize, playerUpdate, adminUpdate, forPlayer, summary, blank } from "../seek_and_destroy/sheet/rules.js";
 
-export const GM = "мастер";
+export const GM = "theredguylmao";      // логин мастера (всегда в нижнем регистре)
+export const GM_NAME = "TheRedGuyLmao";  // как имя мастера показывается на странице
 const COOKIE = "iab";
 const COOKIE_PATH = "/seek_and_destroy/sheet/";
 const DAYS = 30;          // сколько дней держится вход
@@ -73,12 +74,12 @@ const gmVersion = env => sha("gm:" + env.GM_PASSWORD);
 
 // Кто сейчас вошёл: { login, admin } или null.
 async function whoIs(request, env) {
-  if (env.DEV_LOGIN) return { login: cleanLogin(env.DEV_LOGIN), admin: cleanLogin(env.DEV_LOGIN) === GM }; // только для локальной проверки!
+  if (env.DEV_LOGIN) { const l = cleanLogin(env.DEV_LOGIN); return { login: l, admin: l === GM, name: l === GM ? GM_NAME : l }; } // только для локальной проверки!
   const p = await readToken(env, cookieOf(request));
   if (!p) return null;
-  if (p.u === GM) return p.v === await gmVersion(env) ? { login: GM, admin: true } : null;
+  if (p.u === GM) return p.v === await gmVersion(env) ? { login: GM, admin: true, name: GM_NAME } : null;
   const u = await getUser(env, p.u);
-  return u && u.v === p.v ? { login: p.u, admin: false } : null;
+  return u && u.v === p.v ? { login: p.u, admin: false, name: p.u } : null;
 }
 
 async function login(env, body) {
@@ -97,7 +98,7 @@ async function login(env, body) {
     return ERR("Неверный логин или пароль", 401);
   }
   if (fails) await env.SHEETS.delete(failKey(l));
-  return J({ login: l, admin: l === GM }, 200, { "set-cookie": setCookie(await makeToken(env, l, v), DAYS * 86400) });
+  return J({ login: l, admin: l === GM, name: l === GM ? GM_NAME : l }, 200, { "set-cookie": setCookie(await makeToken(env, l, v), DAYS * 86400) });
 }
 
 // path — часть адреса после /api/, например "me" или "admin/sheets".
