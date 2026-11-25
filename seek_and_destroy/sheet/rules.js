@@ -179,6 +179,6 @@ export const adminUpdate = (oldS, inc) => normalize(inc);
 // То, что видит игрок: без заметок мастера.
 export const forPlayer = s => { const c = normalize(s); delete c.gm; return c; };
 
-export const summary = (email, s) => ({
-  email, name: s.name, lvl: s.lvl, created: s.created, race: s.race, prof: s.prof, sp: s.sp, photo: s.photo ? 1 : 0,
+export const summary = (login, s) => ({
+  login, name: s.name, lvl: s.lvl, created: s.created, race: s.race, prof: s.prof, sp: s.sp, photo: s.photo ? 1 : 0,
 });

@@ -22,9 +22,13 @@ async function call(method, url, data) {
   if (!r.ok) throw new Error(j?.error || "Ошибка " + r.status);
   return j;
 }
-const q = e => "api/admin/sheet?e=" + encodeURIComponent(e);
+const q = (u, p = "sheet") => `api/admin/${p}?u=` + encodeURIComponent(u);
 const net = {
   demo: false,
+  login: (login, password) => call("POST", "api/login", { login, password }),
+  logout: () => call("POST", "api/logout"),
+  addUser: (login, password) => call("POST", "api/admin/users", { login, password }),
+  setPass: (u, password) => call("PUT", q(u, "users"), { password }),
   me: () => call("GET", "api/me"),
   sheet: () => call("GET", "api/sheet"),
   save: s => call("PUT", "api/sheet", s),
@@ -50,26 +54,28 @@ function seed() {
     why: "Разобрал на детали трактор старосты, и пришлось бежать. Слышал, что в барах у доков платят техникам наличными.",
     gm: "Должен 300 кредитов перевозчику с Гобора.",
   });
-  return { role: "player", s: { "bram@demo": b } };
+  return { role: "player", users: ["брам", "игрок"], s: { "брам": b } };
 }
 function demo() {
   const K = "iab-demo-v1";
   let db; try { db = JSON.parse(localStorage.getItem(K)); } catch {}
-  if (!db || !db.s) db = seed();
+  if (!db || !db.s || !db.users) db = seed();
   const w = () => { try { localStorage.setItem(K, JSON.stringify(db)); } catch {} };
-  const me = () => db.role === "admin" ? "gm@demo" : "you@demo";
+  const me = () => db.role === "admin" ? "мастер" : "игрок";
   const later = v => new Promise(r => setTimeout(() => r(JSON.parse(JSON.stringify(v))), 50));
   return {
     demo: true,
     setRole(r) { db.role = r; w(); },
     reset() { db = seed(); w(); },
-    me: () => later({ email: me(), admin: db.role === "admin" }),
+    me: () => later({ login: me(), admin: db.role === "admin" }),
+    addUser: async (l, p) => { l = String(l).trim().toLowerCase(); if (l.length < 2) throw new Error("Логин: минимум 2 символа"); if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); if (db.users.includes(l) || l === "мастер") throw new Error("Такой игрок уже есть"); db.users.push(l); w(); return later({ login: l }); },
+    setPass: async (l, p) => { if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); return later({ ok: true }); },
     sheet: () => later(R.forPlayer(db.s[me()] || R.blank())),
     save: async s => { const n = R.playerUpdate(db.s[me()], s); db.s[me()] = n; w(); return later(R.forPlayer(n)); },
-    list: () => later(Object.entries(db.s).map(([e, s]) => R.summary(e, R.normalize(s)))),
-    load: async e => { if (!db.s[e]) throw new Error("Нет такого листа"); return later(R.normalize(db.s[e])); },
+    list: () => later(db.users.map(l => ({ ...R.summary(l, R.normalize(db.s[l] || R.blank())), fresh: !db.s[l] }))),
+    load: async e => later(R.normalize(db.s[e] || R.blank())),
     put: async (e, s) => { db.s[e] = R.adminUpdate(db.s[e], s); w(); return later(db.s[e]); },
-    del: async e => { delete db.s[e]; w(); return later({ ok: true }); },
+    del: async e => { delete db.s[e]; db.users = db.users.filter(x => x !== e); w(); return later({ ok: true }); },
   };
 }
 
@@ -78,8 +84,9 @@ async function detect() {
     const r = await fetch("api/me", { credentials: "same-origin" });
     if ((r.headers.get("content-type") || "").includes("json")) {
       const j = await r.json();
-      if (r.ok && j?.email) return { api: net, me: j };
-      if (r.status === 401 || r.status === 403 || r.status === 500) return { err: j?.error || "Ошибка " + r.status };
+      if (r.ok && j?.login) return { api: net, me: j };
+      if (r.status === 401) return { api: net, me: null }; // сервер есть, но вход не выполнен
+      if (r.status >= 400) return { err: j?.error || "Ошибка " + r.status };
     }
   } catch {}
   const d = demo();
@@ -257,24 +264,41 @@ function wizView() {
 }
 
 /* ---------- список игроков ---------- */
+// Простой пароль для игрока: без похожих символов (0/o, 1/l).
+const newPass = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), x => "abcdefghjkmnpqrstuvwxyz23456789"[x % 31]).join("");
 function listView() {
-  return `<div class="panel"><div class="toolbar"><h2 style="margin:0">Игроки</h2><span class="hint" style="margin:0">${list.length} ${pl(list.length, ["лист", "листа", "листов"])}</span></div>
-  ${list.length ? `<div class="players">${list.map(p => `<button class="pl" data-act="open" data-e="${esc(p.email)}"><b>${esc(p.name || "Без имени")}</b>
-    <span>${esc([p.race, p.prof].filter(Boolean).join(" · ") || "—")}</span><span>${esc(p.email)}</span>
-    ${p.created ? `<span class="tag">Уровень ${esc(p.lvl)}</span>` : `<span class="tag acc">Создаёт персонажа</span>`}${p.sp ? ` <span class="tag">Очков навыков: ${esc(p.sp)}</span>` : ""}</button>`).join("")}</div>`
-    : `<div class="empty">Пока никто не зарегистрировался. Отправьте игрокам ссылку — их листы появятся здесь.</div>`}</div>`;
+  return `<div class="panel"><div class="toolbar"><h2 style="margin:0">Игроки</h2><span class="hint" style="margin:0">${list.length} ${pl(list.length, ["игрок", "игрока", "игроков"])}</span></div>
+  <form class="newpl" data-form="adduser"><h3>Новый игрок</h3>
+    <label>Логин<input name="login" autocomplete="off" placeholder="например, vasya" required></label>
+    <label>Пароль<input name="password" autocomplete="off" value="${newPass()}" required></label>
+    <button class="pri" type="submit">Создать</button></form>
+  ${list.length ? `<div class="players">${list.map(p => `<button class="pl" data-act="open" data-e="${esc(p.login)}"><b>${esc(p.name || "Без имени")}</b>
+    <span>${esc([p.race, p.prof].filter(Boolean).join(" · ") || "—")}</span><span>логин: ${esc(p.login)}</span>
+    ${p.fresh ? `<span class="tag acc">Ещё не заходил</span>` : p.created ? `<span class="tag">Уровень ${esc(p.lvl)}</span>` : `<span class="tag acc">Создаёт персонажа</span>`}${p.sp ? ` <span class="tag">Очков навыков: ${esc(p.sp)}</span>` : ""}</button>`).join("")}</div>`
+    : `<div class="empty">Игроков пока нет. Создайте игрока выше и передайте ему логин, пароль и ссылку на эту страницу.</div>`}</div>`;
+}
+// Окно с данными для входа — их нужно передать игроку.
+const credDlg = (l, p, title) => dialog(`<h2 class="stepH">${title}</h2><p class="hint">Передайте игроку ссылку, логин и пароль. Пароль больше нигде не будет показан.</p>
+  <div class="creds"><div><small>Ссылка</small><b>${esc(location.origin + location.pathname)}</b></div><div><small>Логин</small><b>${esc(l)}</b></div><div><small>Пароль</small><b>${esc(p)}</b></div></div>
+  <button data-act="copycred" data-t="${esc(`Чарник ИАБ: ${location.origin + location.pathname}\nЛогин: ${l}\nПароль: ${p}`)}" style="margin-top:12px">Скопировать всё</button>`);
+function loginView(err = "") {
+  return `<form class="panel login" data-form="login"><h2 class="stepH">Вход</h2><p class="hint">Логин и пароль выдаёт мастер.</p>
+    ${err ? `<div class="errs"><p>${esc(err)}</p></div>` : ""}
+    <label>Логин<input name="login" autocomplete="username" required></label>
+    <label>Пароль<input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="pri" type="submit">Войти</button></form>`;
 }
 
 /* ---------- отрисовка ---------- */
 const saveBar = () => dirty && (mode === "sheet" || mode === "edit")
   ? `<div class="save"><span>Есть несохранённые изменения</span><div style="display:flex;gap:8px"><button data-act="revert">Отменить</button><button class="pri" data-act="savesheet">Сохранить</button></div></div>` : "";
-const banner = () => API.demo ? `<div class="banner" style="margin-top:28px">Это демо: всё хранится только в этом браузере. На вашем сайте вместо переключателя «Игрок / Мастер» будет вход через Cloudflare, и каждый игрок увидит только свой лист.</div>` : "";
+const banner = () => API.demo ? `<div class="banner" style="margin-top:28px">Это демо: всё хранится только в этом браузере. На сайте вместо переключателя «Игрок / Мастер» будет вход по логину и паролю, и каждый игрок увидит только свой лист.</div>` : "";
 function render() {
   const y = scrollY;
   let body = "";
   if (mode === "list") body = listView();
   else if (mode === "wiz") body = wizView();
-  else if (mode === "edit") body = `<div class="panel toolbar" style="margin-bottom:14px"><button data-act="back">← Все игроки</button><span style="overflow-wrap:anywhere">${esc(editing)}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button data-act="peek"${peek ? ' class="pri"' : ""}>${peek ? "← Вернуться к правке" : "Глазами игрока"}</button>${peek ? "" : `<button class="warn" data-act="delask">Удалить лист</button>`}</div></div>` + (peek ? peekView() : sheetBody("admin"));
+  else if (mode === "edit") body = `<div class="panel toolbar" style="margin-bottom:14px"><button data-act="back">← Все игроки</button><span style="overflow-wrap:anywhere">логин: ${esc(editing)}</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button data-act="peek"${peek ? ' class="pri"' : ""}>${peek ? "← Вернуться к правке" : "Глазами игрока"}</button>${peek ? "" : `<button data-act="pass">Сменить пароль</button><button class="warn" data-act="delask">Удалить игрока</button>`}</div></div>` + (peek ? peekView() : sheetBody("admin"));
   else body = sheetBody("player");
   app.innerHTML = body + banner() + saveBar();
   scrollTo(0, y);
@@ -290,7 +314,7 @@ function peekView() {
 function header() {
   $("#who").innerHTML = API.demo
     ? `<span>Демо:</span><button data-act="role" data-r="player" class="${ME.admin ? "" : "on"}">Игрок</button><button data-act="role" data-r="admin" class="${ME.admin ? "on" : ""}">Мастер</button><button data-act="reset">Сбросить</button>`
-    : `<span>${esc(ME.email)}${ME.admin ? " · мастер" : ""}</span>`;
+    : ME ? `<span>${esc(ME.login)}${ME.admin ? "" : " · игрок"}</span><button data-act="logout">Выйти</button>` : "";
 }
 async function home() {
   open = {}; peek = false; dirty = false; delArm = false; editing = "";
@@ -406,10 +430,29 @@ document.addEventListener("click", async e => {
         if (dirty && !b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Не сохранено! Ещё раз — выйти"; return; }
         await home(); scrollTo(0, 0); break;
       case "delask":
-        if (!delArm) { delArm = true; b.textContent = "Точно удалить? Нажмите ещё раз"; return; }
-        await API.del(editing); toast("Лист удалён"); await home(); break;
+        if (!delArm) { delArm = true; b.textContent = "Удалить игрока и его лист? Нажмите ещё раз"; return; }
+        await API.del(editing); toast("Игрок удалён"); await home(); break;
+      case "pass": { const p = newPass(); await API.setPass(editing, p); credDlg(editing, p, "Новый пароль"); break; }
+      case "copycred": await navigator.clipboard.writeText(b.dataset.t); toast("Скопировано"); break;
+      case "logout": await API.logout(); ME = null; S = null; header(); app.innerHTML = loginView(); break;
     }
   } catch (err) { toast(err.message || "Ошибка", 1); }
+});
+
+document.addEventListener("submit", async e => {
+  const f = e.target.closest("[data-form]"); if (!f) return;
+  e.preventDefault();
+  const v = Object.fromEntries(new FormData(f));
+  try {
+    if (f.dataset.form === "login") {
+      ME = await API.login(v.login, v.password); header(); await home(); scrollTo(0, 0);
+    } else if (f.dataset.form === "adduser") {
+      const r = await API.addUser(v.login, v.password);
+      list = await API.list(); render(); credDlg(r.login, v.password, "Игрок создан");
+    }
+  } catch (err) {
+    if (f.dataset.form === "login") app.innerHTML = loginView(err.message); else toast(err.message, 1);
+  }
 });
 
 // Подсказка с описанием навыка при наведении (и при фокусе — для клавиатуры и телефона).
@@ -432,5 +475,6 @@ $("#dlg").addEventListener("close", () => { if (S) render(); });
   const d = await detect();
   if (d.err) { app.innerHTML = `<div class="panel"><h2 style="margin-top:0">Нет доступа</h2><p>${esc(d.err)}</p></div>`; return; }
   API = d.api; ME = d.me; header();
+  if (!ME) { app.innerHTML = loginView(); return; }
   try { await home(); } catch (err) { app.innerHTML = `<div class="panel"><h2 style="margin-top:0">Ошибка</h2><p>${esc(err.message)}</p></div>`; }
 })();
