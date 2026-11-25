@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Чарник авантюриста ИАБ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday tool for a tabletop group: fill once step by step, then a sheet the GM keeps up to date
+   IDEA a Bureau registration file: federal ID card on top, dossier pages below
+   PICTURE the ID card itself, then a large inventory shelf
+   COLOUR deep teal header field, white paper, coral accent for limits, points and the signature skill
+   TYPE Exo 2 for headings and numbers, Inter for text
+   LAYOUT slim header band; content column up to 1240px; four attribute columns that fold to two, then one */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#0c1416);--ink:light-dark(#0f1c1e,#e6f0ef);--mute:light-dark(#566a6d,#93a8aa);--teal:light-dark(#0e5a5c,#13787a);--teal2:light-dark(#e3f1f0,#14272a);--line:light-dark(#cfdedd,#26393c);--acc:light-dark(#d93a22,#ff6b52);--card:light-dark(#ffffff,#111d20)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3,.num{font-family:"Exo 2",Inter,sans-serif}
+.top{background:var(--teal);color:#fff;padding:16px max(5vw,16px) 72px}
+.top .in{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:10px 20px}
+.top h1{margin:0;font-size:clamp(28px,5vw,42px);line-height:1.05;letter-spacing:-.02em;font-weight:800}
+.top p{margin:4px 0 0;opacity:.85;font-size:15px}
+#who{font-size:14px;opacity:.9;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#who button{background:rgba(255,255,255,.14);color:#fff;border-color:rgba(255,255,255,.35);min-height:38px}
+#who button.on{background:#fff;color:var(--teal)}
+.wrap{max-width:1240px;margin:-56px auto 0;padding:0 max(5vw,16px) 96px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 30px rgba(0,40,40,.1);padding:clamp(16px,3vw,26px)}
+button{font:500 15px Inter,sans-serif;min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button:disabled{opacity:.4;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.pri{background:var(--teal);color:#fff;border-color:var(--teal)}
+.warn{color:var(--acc);border-color:var(--acc)}
+label{display:block;font-size:13px;color:var(--mute);font-weight:500}
+label small{display:block;font-weight:400;margin-top:1px}
+input,select,textarea{display:block;width:100%;margin-top:4px;font:16px Inter,sans-serif;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;min-height:44px}
+textarea{resize:vertical;min-height:110px;line-height:1.45}
+.f{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:14px 16px}
+.f .wide,.two .wide{grid-column:1/-1}
+.pl .tag{display:inline-block}
+h2{font-size:26px;line-height:1.1;letter-spacing:-.01em;margin:36px 0 4px}
+h3{margin:0;font-size:19px}
+.hint{color:var(--mute);font-size:14px;margin:4px 0 14px}
+.steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin:0 0 18px}
+.steps button{flex:none;min-height:36px;font-size:14px;border-radius:999px;padding:0 14px}
+.steps button.cur{background:var(--teal);color:#fff;border-color:var(--teal)}
+.steps button.done{border-color:var(--teal);color:var(--teal)}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:22px;flex-wrap:wrap}
+.stepH{font-size:clamp(26px,4vw,34px);margin:0 0 4px;line-height:1.1}
+.pool{display:flex;align-items:baseline;gap:10px;margin:6px 0 16px}
+.pool b{font:800 clamp(40px,8vw,64px)/1 "Exo 2",sans-serif;color:var(--acc)}
+.pool.zero b{color:var(--teal)}
+.alloc{display:grid;gap:10px}
+.arow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.arow h3 small{display:block;font:400 14px Inter,sans-serif;color:var(--mute)}
+.pips{display:flex;gap:4px;margin-top:8px}
+.pips i{width:18px;height:8px;border-radius:4px;background:var(--teal2)}
+.pips i.on{background:var(--teal)}
+.step{display:flex;align-items:center;gap:6px}
+.step button{width:44px;padding:0;font-size:20px}
+.step .num{min-width:32px;text-align:center;font-size:28px;font-weight:800}
+.faiths{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px}
+.fc{display:block;text-align:left;height:auto;padding:16px;border-radius:14px;line-height:1.4}
+.fc b{display:block;font:700 21px "Exo 2",sans-serif}
+.fc em{display:block;font-style:normal;color:var(--teal);font-weight:600;margin:2px 0 6px}
+.fc span{color:var(--mute);font-size:14px}
+.fc.on{border:2px solid var(--teal);background:var(--teal2)}
+.errs{border:1px solid var(--acc);color:var(--acc);border-radius:12px;padding:10px 14px;margin:14px 0}
+.errs p{margin:2px 0}
+/* лист */
+.idc{display:grid;grid-template-columns:190px minmax(0,1fr);gap:22px}
+.photo{position:relative;aspect-ratio:4/5;border-radius:12px;border:2px dashed var(--line);background:var(--teal2);display:grid;place-items:center;overflow:hidden;color:var(--mute);text-align:center;font-size:14px;padding:8px}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.photo input{position:absolute;inset:0;opacity:0;cursor:pointer;margin:0;min-height:0}
+.photo.can{cursor:pointer}
+.nm{font:800 clamp(24px,4vw,32px)/1.1 "Exo 2",sans-serif;margin:0}
+.sub{color:var(--mute);margin:4px 0 14px}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px 18px;margin:0}
+.facts dt{font-size:13px;color:var(--mute)}
+.facts dd{margin:0;font-weight:600}
+.strip{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:18px;align-items:center;border-top:1px solid var(--line);padding-top:16px}
+.big{font:700 18px "Exo 2",sans-serif;white-space:nowrap}
+.big small{display:block;font:500 13px Inter,sans-serif;color:var(--mute)}
+.big.acc{color:var(--acc)}
+.meter{height:14px;border-radius:7px;background:var(--teal2);overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:var(--teal)}
+.low .meter i{background:var(--acc)}
+.inv{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px}
+.item{border:1px solid var(--line);border-left:6px solid var(--teal);border-radius:10px;padding:12px 14px;background:var(--card);font-weight:500}
+.empty{color:var(--mute);border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center}
+.attrs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.at{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.at header{background:var(--teal2);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.at header .num{font-size:28px;font-weight:800}
+.at header small{display:block;font:500 13px Inter,sans-serif;color:var(--mute)}
+.sk{display:flex;align-items:center;gap:8px;padding:9px 12px;border-top:1px solid var(--line);flex-wrap:wrap}
+.sk .sn{flex:1 1 8em;font-size:15px;line-height:1.25}
+.sk .sn small{display:block;color:var(--mute);font-size:13px}
+.sk .tot{font:800 20px "Exo 2",sans-serif;min-width:28px;text-align:right}
+.sk.sig .tot,.sk.sig .star{color:var(--acc)}
+.star{color:var(--line);font-size:16px}
+.sk .step button{width:34px;min-height:34px;font-size:17px}
+.sk .step .num{font-size:15px;min-width:18px;color:var(--mute);font-weight:600}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.box{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--card)}
+.box h3{margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}
+.box h3 span{font:500 13px Inter,sans-serif;color:var(--mute)}
+.box ul{margin:0;padding-left:18px}
+.box p{margin:0;white-space:pre-wrap}
+.box .none{color:var(--mute)}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-bottom:6px}
+.row.imp{grid-template-columns:minmax(0,1fr) 5em auto}
+.row input{margin:0}
+.x{width:44px;padding:0;color:var(--mute)}
+.add{width:100%;border-style:dashed;color:var(--teal);margin-top:4px}
+.save{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:var(--bg);padding:10px max(5vw,16px);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;z-index:5}
+.save button{border-color:transparent}
+.players{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,280px),1fr));gap:12px}
+.pl{display:block;text-align:left;height:auto;padding:16px;border-radius:14px;line-height:1.4}
+.pl b{display:block;font:700 20px "Exo 2",sans-serif}
+.pl span{display:block;color:var(--mute);font-size:14px;overflow-wrap:anywhere}
+.tag{display:inline-block;font-size:13px;border-radius:999px;padding:2px 10px;margin-top:8px;background:var(--teal2);color:var(--teal);font-weight:600}
+.tag.acc{background:none;border:1px solid var(--acc);color:var(--acc)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-bottom:16px}
+.banner{background:var(--teal2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:14px;margin-bottom:14px}
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:15px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;max-width:90vw}
+.toast.on{opacity:1}
+.toast.bad{background:var(--acc);color:#fff}
+input.bad{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.lvl .lbar{grid-column:1/-1;order:3}
+.lvl .step{justify-self:end;flex-wrap:wrap}
+.lvl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 18px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 30px rgba(0,40,40,.1);padding:14px clamp(16px,3vw,26px);margin-bottom:14px}
+.lvl > div:first-child{display:flex;align-items:baseline;gap:8px}
+.lvl small{font-size:13px;color:var(--mute);font-weight:500}
+.lvl b{font-size:44px;line-height:1;font-weight:800;color:var(--teal)}
+.lvl span{color:var(--mute)}
+.lvl p{margin:0;color:var(--mute);font-size:14px;text-align:right}
+.lbar{display:grid;grid-template-columns:repeat(20,1fr);gap:3px}
+.lbar i{height:10px;border-radius:3px;background:var(--teal2)}
+.lbar i.on{background:var(--teal)}
+.sk .tot small{font-size:13px;color:var(--mute);font-weight:600}
+.row.wpn{grid-template-columns:minmax(0,1fr) auto}.row.wpn input[data-f=d]{grid-row:2;grid-column:1}
+.item.w{border-left-color:var(--acc)}
+.item small{display:block;font-size:12px;color:var(--acc);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.item span{display:block;font-weight:400;color:var(--mute);font-size:14px}
+@media(max-width:640px){.lvl{grid-template-columns:minmax(0,1fr)}.lvl p{text-align:left}.row.wpn{grid-template-columns:minmax(0,1fr) auto}.row.wpn input:nth-child(2){grid-row:2;grid-column:1}}
+.tip{position:fixed;z-index:20;max-width:min(300px,90vw);background:var(--ink);color:var(--bg);font-size:14px;line-height:1.4;padding:8px 12px;border-radius:8px;pointer-events:none;opacity:0;transition:opacity .12s}
+.tip.on{opacity:1}
+.sk[data-tip]{cursor:help}
+.crin{width:7em;margin:2px 0 0;min-height:36px;padding:4px 8px;font:700 18px "Exo 2",sans-serif}
+.box h3 .sm{min-height:32px;padding:0 12px;font:500 14px Inter,sans-serif}
+.box h3 .sm.pri{color:#fff}
+.ilist{margin:0;padding:0;list-style:none}
+.ilist li{padding:8px 0;border-top:1px solid var(--line)}
+.ilist li:first-child{border-top:0;padding-top:0}
+.ilist li b{display:block}
+.ilist li b em{font-style:normal;font-weight:500;font-size:13px;color:var(--acc);margin-left:6px}
+.row.imp{grid-template-columns:minmax(0,1fr) 4.5em auto}.row.imp input[data-f=d]{grid-row:2;grid-column:1/3}
+.row.wpn,.row.imp{padding-bottom:8px;border-bottom:1px solid var(--line);margin-bottom:8px}
+.ilist li span{display:block;color:var(--mute);font-size:14px}
+.pinfo{border:1px solid var(--line);border-left:6px solid var(--teal);border-radius:12px;padding:12px 14px;background:var(--teal2)}
+.pinfo h3 small{display:block;font:500 13px Inter,sans-serif;color:var(--mute)}
+.pinfo p{margin:0;white-space:pre-wrap}
+dialog{border:0;padding:0;background:none;color:var(--ink);width:min(760px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(5,20,22,.55)}
+dialog .panel{max-height:90vh;overflow:auto}
+.atlas{display:grid;gap:10px}
+.atlas .box.on{border:2px solid var(--teal);background:var(--teal2)}
+@media(max-width:1000px){.attrs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.idc{grid-template-columns:minmax(0,1fr)}.photo{width:170px;justify-self:center}.strip{grid-template-columns:repeat(2,minmax(0,1fr))}.strip .hum{grid-column:1/-1}.attrs,.two{grid-template-columns:minmax(0,1fr)}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <div><h1>Личное дело авантюриста</h1><p>Интергалактическое Авантюристское Бюро</p></div>
+  <div id="who"></div>
+</div></header>
+<main class="wrap" id="app"><div class="panel">Загрузка…</div></main>
+<div class="toast" id="toast" role="status"></div>
+<dialog id="dlg" aria-label="Окно"></dialog>
+<script type="module" src="app.js"></script>
+</body>
+</html>
