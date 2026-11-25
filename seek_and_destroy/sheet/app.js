@@ -425,13 +425,18 @@ document.addEventListener("click", async e => {
       case "del": S[b.dataset.l].splice(+b.dataset.i, 1); dirty = true; render(); break;
       case "savesheet": S = mode === "edit" ? await API.put(editing, S) : await API.save(S); dirty = false; render(); toast("Сохранено"); break;
       case "revert": dirty = false; S = mode === "edit" ? await API.load(editing) : await API.sheet(); render(); break;
-      case "open": open = {}; peek = false; editing = b.dataset.e; S = await API.load(editing); mode = "edit"; dirty = false; delArm = false; render(); scrollTo(0, 0); break;
+      case "open": {
+        const who = b.dataset.e;
+        try { S = await API.load(who); }
+        catch (err) { list = list.filter(p => p.login !== who); render(); throw err; } // игрок уже удалён — убираем его из списка
+        open = {}; peek = false; editing = who; mode = "edit"; dirty = false; delArm = false; render(); scrollTo(0, 0); break;
+      }
       case "back":
         if (dirty && !b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "Не сохранено! Ещё раз — выйти"; return; }
         await home(); scrollTo(0, 0); break;
       case "delask":
         if (!delArm) { delArm = true; b.textContent = "Удалить игрока и его лист? Нажмите ещё раз"; return; }
-        await API.del(editing); toast("Игрок удалён"); await home(); break;
+        { const gone = editing; await API.del(gone); await home(); list = list.filter(p => p.login !== gone); render(); toast("Игрок удалён"); } break;
       case "pass": { const p = newPass(); await API.setPass(editing, p); credDlg(editing, p, "Новый пароль"); break; }
       case "copycred": await navigator.clipboard.writeText(b.dataset.t); toast("Скопировано"); break;
       case "logout": await API.logout(); ME = null; S = null; header(); app.innerHTML = loginView(); break;
@@ -448,7 +453,9 @@ document.addEventListener("submit", async e => {
       ME = await API.login(v.login, v.password); header(); await home(); scrollTo(0, 0);
     } else if (f.dataset.form === "adduser") {
       const r = await API.addUser(v.login, v.password);
-      list = await API.list(); render(); credDlg(r.login, v.password, "Игрок создан");
+      list = await API.list();
+      if (!list.some(p => p.login === r.login)) list.push({ ...R.summary(r.login, R.blank()), fresh: true });
+      render(); credDlg(r.login, v.password, "Игрок создан");
     }
   } catch (err) {
     if (f.dataset.form === "login") {

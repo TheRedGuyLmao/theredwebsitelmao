@@ -139,7 +139,11 @@ export async function handleApi(request, env, path) {
         do {
           const page = await env.SHEETS.list({ prefix: "u:", cursor });
           for (const k of page.keys) {
-            const l = k.name.slice(2), s = await read(env, l);
+            // Список ключей в KV обновляется с задержкой до минуты: только что удалённый игрок
+            // ещё может в нём быть. Поэтому проверяем саму запись — она обновляется сразу.
+            const l = k.name.slice(2);
+            if (!await getUser(env, l)) continue;
+            const s = await read(env, l);
             out.push({ ...summary(l, s || blank()), fresh: !s });
           }
           cursor = page.list_complete ? null : page.cursor;
