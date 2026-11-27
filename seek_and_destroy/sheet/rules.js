@@ -94,7 +94,7 @@ const AFTER = ["look", "photo", "ideals", "traits", "bonds", "flaws", "bio", "wh
 
 export const blank = () => ({
   created: false, lvl: 1,
-  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", pcode: "", race: "", prof: "", cls: "", h: "", w: "",
+  name: "", sex: "", dob: "", planet: "AJ-01-0001", pname: "", pdesc: "", pcode: "", race: "", prof: "", cls: "", kit: "", h: "", w: "",
   look: "", photo: "",
   attr: { int: 1, psy: 1, phy: 1, mot: 1 }, faith: "", sig: "",
   ideals: "", traits: "", bonds: "", flaws: "", bio: "", why: "",
@@ -119,6 +119,7 @@ export function normalize(o) {
   for (const a of ATTRS) s.attr[a.id] = int(o.attr?.[a.id], 1, 10, 1);
   s.faith = FAITHS.some(f => f.id === o.faith) ? o.faith : "";
   s.cls = CLASSES.some(c => c.id === o.cls) ? o.cls : "";
+  s.kit = CLASSES.some(c => c.id === o.kit) ? o.kit : ""; // чей класс снаряжение уже выдано
   s.sig = SKILLS.some(x => x.id === o.sig) ? o.sig : "";
   for (const x of SKILLS) { const r = int(o.rk?.[x.id], 0, 20, 0); if (r) s.rk[x.id] = r; }
   const list = v => Array.isArray(v) ? v.slice(0, 200) : [];
@@ -204,9 +205,17 @@ export function playerUpdate(oldS, inc) {
       const e = creationErrors(n);
       if (e.length) throw new Error(e.join(". "));
       n.created = true;
-      // Стартовое снаряжение класса.
-      n.wpn = [...c.wpn.map(x => ({ ...x })), ...n.wpn];
-      n.inv = [...c.inv, ...n.inv];
+      // Стартовое снаряжение класса. Если после «Изменить персонажа» класс сменился —
+      // забираем снаряжение прежнего класса (по одной штуке каждого предмета), чтобы его нельзя было копить.
+      const prev = CLASSES.find(k => k.id === old.kit);
+      if (prev && prev.id !== c.id) {
+        for (const x of prev.wpn) { const i = n.wpn.findIndex(y => y.n === x.n); if (i >= 0) n.wpn.splice(i, 1); }
+        for (const x of prev.inv) { const i = n.inv.indexOf(x); if (i >= 0) n.inv.splice(i, 1); }
+      }
+      // То, что уже лежит в инвентаре, второй раз не выдаём.
+      n.wpn = [...c.wpn.filter(x => !n.wpn.some(y => y.n === x.n)).map(x => ({ ...x })), ...n.wpn];
+      n.inv = [...c.inv.filter(x => !n.inv.includes(x)), ...n.inv];
+      n.kit = c.id;
     }
     return n;
   }
@@ -228,6 +237,11 @@ export function playerUpdate(oldS, inc) {
 export const adminUpdate = (oldS, inc) => normalize(inc);
 
 // То, что видит игрок: без заметок мастера.
+// «Изменить персонажа»: лист возвращается в создание со всеми данными.
+export const playerReopen = old => ({ ...normalize(old || blank()), created: false });
+// «Начать заново»: чистый лист. Остаются только заметки мастера — их игрок не видит.
+export const playerReset = old => ({ ...blank(), gm: normalize(old || blank()).gm });
+
 export const forPlayer = s => { const c = normalize(s); delete c.gm; return c; };
 
 export const summary = (login, s) => ({

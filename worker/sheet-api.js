@@ -8,7 +8,7 @@
 //   u:<логин>  учётная запись игрока { salt, hash, v }  (v растёт при смене пароля — старые входы сгорают)
 //   s:<логин>  лист персонажа
 //   f:<логин>  счётчик неудачных попыток входа (живёт 15 минут)
-import { normalize, playerUpdate, adminUpdate, forPlayer, summary, blank } from "../seek_and_destroy/sheet/rules.js";
+import { normalize, playerUpdate, playerReopen, playerReset, adminUpdate, forPlayer, summary, blank } from "../seek_and_destroy/sheet/rules.js";
 
 export const GM = "theredguylmao";      // логин мастера (всегда в нижнем регистре)
 export const GM_NAME = "TheRedGuyLmao";  // как имя мастера показывается на странице
@@ -127,6 +127,15 @@ export async function handleApi(request, env, path) {
         if (!old || JSON.stringify(next) !== JSON.stringify(old)) await write(env, me.login, next);
         return J(forPlayer(next));
       }
+    }
+
+    // Игрок сам: «Изменить персонажа» и «Начать заново».
+    if ((path === "sheet/reopen" || path === "sheet/reset") && m === "POST") {
+      if (me.admin) return ERR("У мастера нет своего листа", 403);
+      const old = await read(env, me.login);
+      const next = path === "sheet/reopen" ? playerReopen(old) : playerReset(old);
+      await write(env, me.login, next);
+      return J(forPlayer(next));
     }
 
     if (path.startsWith("admin/")) {

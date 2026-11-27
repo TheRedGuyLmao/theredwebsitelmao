@@ -32,6 +32,8 @@ const net = {
   me: () => call("GET", "api/me"),
   sheet: () => call("GET", "api/sheet"),
   save: s => call("PUT", "api/sheet", s),
+  reopenChar: () => call("POST", "api/sheet/reopen"),
+  resetChar: () => call("POST", "api/sheet/reset"),
   list: () => call("GET", "api/admin/sheets"),
   load: e => call("GET", q(e)),
   put: (e, s) => call("PUT", q(e), s),
@@ -51,7 +53,6 @@ function seed() {
     bonds: "Младшая сестра осталась на Пфир-Гаасе, отправляет ей половину заработка.",
     flaws: "Боится открытого неба. Не может пройти мимо сломанной вещи.",
     bio: "Вырос в подземной деревне на Пфир-Гаасе, где чинил всё — от насосов до тракторов старосты.",
-    why: "Разобрал на детали трактор старосты, и пришлось бежать. Слышал, что в барах у доков платят техникам наличными.",
     gm: "Должен 300 кредитов перевозчику с Гобора.",
   });
   return { role: "player", users: ["брам", "игрок"], s: { "брам": b } };
@@ -72,6 +73,8 @@ function demo() {
     setPass: async (l, p) => { if (String(p).length < 4) throw new Error("Пароль: минимум 4 символа"); return later({ ok: true }); },
     sheet: () => later(R.forPlayer(db.s[me()] || R.blank())),
     save: async s => { const n = R.playerUpdate(db.s[me()], s); db.s[me()] = n; w(); return later(R.forPlayer(n)); },
+    reopenChar: async () => { db.s[me()] = R.playerReopen(db.s[me()]); w(); return later(R.forPlayer(db.s[me()])); },
+    resetChar: async () => { db.s[me()] = R.playerReset(db.s[me()]); w(); return later(R.forPlayer(db.s[me()])); },
     list: () => later(db.users.map(l => ({ ...R.summary(l, R.normalize(db.s[l] || R.blank())), fresh: !db.s[l] }))),
     load: async e => later(R.normalize(db.s[e] || R.blank())),
     put: async (e, s) => { db.s[e] = R.adminUpdate(db.s[e], s); w(); return later(db.s[e]); },
@@ -104,11 +107,10 @@ const FL = {
   bonds: ["Узы", "Люди, места и вещи, которые для него важны", 1],
   flaws: ["Изъяны", "Слабости, пороки, страхи", 1],
   bio: ["Биография", "Откуда он и что с ним было до этого дня", 1],
-  why: ["Почему ты здесь?", "Как и зачем ты оказался в этом баре", 1],
   notes: ["Заметки игрока", "", 1],
   gm: ["Заметки мастера", "Игрок их не видит", 1],
 };
-const WIDE = ["look", "pdesc", "bio", "why", "notes", "gm"];
+const WIDE = ["look", "pdesc", "bio", "notes", "gm"];
 const ageLine = () => { const n = R.age(S.dob); return n === null ? "" : `Возраст: ${R.ageText(n)}`; };
 function fld(k, cls = "") {
   const [l, h, ta] = FL[k], v = esc(S[k]);
@@ -217,10 +219,11 @@ function sheetBody(m) {
   const A = m === "admin", P = m === "player", V = m === "view";
   const hint = P ? (S.sp ? `У тебя ${S.sp} ${pl(S.sp, ["очко", "очка", "очков"])} навыков: жми «+» у навыка. Справа — значение навыка и его потолок.` : "Очки навыков выдаёт мастер. Справа — значение навыка и его потолок. Характеристики заморожены.")
     : A ? "Мастер меняет всё: характеристики (заголовки) и вложенные очки навыков (строки). Число справа — значение навыка и его потолок." : "Навык = характеристика + вложенные очки + бонус класса. Справа — значение и потолок.";
-  const pers = ["ideals", "traits", "bonds", "flaws", "look", "bio", "why"];
+  const pers = ["ideals", "traits", "bonds", "flaws", "look", "bio"];
   const ownPlanet = !A && S.planet === R.OTHER ? `<div class="box wide"><h3>${esc(R.planetName(S))}<span>родная планета</span></h3><p>${esc(S.pdesc || "—")}</p></div>` : "";
   const invView = `<div class="two">${listBox("wpn", "Оружие", "+ Добавить оружие", !V)}${listBox("inv", "Предметы", "+ Добавить предмет", !V)}</div>`;
-  return lvlBand(m) + idCard(m)
+  const bar = P ? `<div class="pbar"><button data-act="reopenask">Изменить персонажа</button><button class="warn" data-act="resetask">Начать заново</button></div>` : "";
+  return bar + lvlBand(m) + idCard(m)
     + `<h2>Инвентарь</h2>${P ? `<p class="hint">Нажми «Изменить», чтобы добавить или убрать вещи, потом «Сохранить» внизу.</p>` : ""}${invView}`
     + `<h2>Характеристики и навыки</h2><p class="hint">${hint}</p>${attrGrid(A ? "admin" : P ? "player" : "view")}`
     + `<div class="two" style="margin-top:36px">${listBox("imp", "Киберимпланты", "+ Добавить имплант", A, freeNote("imp", R.classOf(S)))}${listBox("spl", "Заклинания", "+ Добавить заклинание", A, freeNote("spl", R.classOf(S)))}</div>`
@@ -265,7 +268,7 @@ const STEP = [
   },
   () => `<h2 class="stepH">Какой ты?</h2><p class="hint">Пара честных строк в каждом поле — мастеру этого хватит, чтобы зацепить персонажа за сюжет.</p>
     <div class="two">${fld("ideals")}${fld("traits")}${fld("bonds")}${fld("flaws")}</div>`,
-  () => `<h2 class="stepH">Твоя история</h2><p class="hint">Откуда ты и как оказался там, где начинается игра.</p><div class="f">${fld("bio", "wide")}${fld("why", "wide")}</div>`,
+  () => `<h2 class="stepH">Твоя история</h2><p class="hint">Откуда ты и что с тобой было до этого дня.</p><div class="f">${fld("bio", "wide")}</div>`,
   () => {
     const e = R.creationErrors(S);
     return `<h2 class="stepH">Проверка</h2>${e.length
@@ -449,6 +452,25 @@ document.addEventListener("click", async e => {
       case "faith": S.faith = b.dataset.f; render(); draftSoon(); break;
       case "cls": S.cls = b.dataset.c; render(); draftSoon(); break;
       case "startwiz": mode = "wiz"; step = 0; render(); scrollTo(0, 0); break;
+      case "reopenask":
+        dialog(`<h2 class="stepH">Изменить персонажа?</h2><p>Персонаж вернётся в создание со всеми текущими данными. Можно поменять что угодно: досье, характеристики, веру, класс, коронный навык.</p>
+          <p class="hint">Пока ты не зарегистрируешь его снова, лист будет в режиме создания. Уровень, очки, инвентарь и импланты останутся.</p>`,
+          `<button data-act="dclose">Отмена</button><button class="pri" data-act="charreopen">Изменить</button>`);
+        break;
+      case "resetask":
+        dialog(`<h2 class="stepH">Начать заново?</h2><p>Персонаж будет стёрт полностью: досье, характеристики, класс, уровень, инвентарь, импланты и заклинания. Ты начнёшь с чистого листа.</p>
+          <p style="color:var(--acc);font-weight:600">Отменить это нельзя.</p>`,
+          `<button data-act="dclose">Отмена</button><button class="warn" data-act="charreset">Стереть и начать заново</button>`);
+        break;
+      case "charreopen": case "charreset": {
+        const fresh = a === "charreset";
+        S = fresh ? await API.resetChar() : await API.reopenChar();
+        savedJSON = JSON.stringify(S); dirty = false; open = {};
+        mode = fresh ? "welcome" : "wiz"; step = 0;
+        $("#dlg").close(); render(); scrollTo(0, 0);
+        toast(fresh ? "Персонаж стёрт" : "Персонаж открыт для изменений");
+        break;
+      }
       case "sig": S.sig = b.dataset.id; render(); draftSoon(); break;
       case "register": clearTimeout(saveT); saveT = 0; S = await API.save({ ...S, created: true }); mode = "sheet"; render(); scrollTo(0, 0); toast("Персонаж зарегистрирован в Бюро"); break;
       case "up": {
