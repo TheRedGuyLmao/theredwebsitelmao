@@ -155,7 +155,7 @@ function attrGrid(m) {
     const head = `<header><div><h3>${a.name}</h3><small>${e > base ? `${base} + 1 от веры` : a.short}</small></div>${m === "admin"
       ? `<div class="step"><button data-act="aattr" data-k="${a.id}" data-d="-1" aria-label="${a.name} меньше">−</button><span class="num">${base}</span><button data-act="aattr" data-k="${a.id}" data-d="1" aria-label="${a.name} больше">+</button></div>`
       : `<span class="num">${e}</span>`}</header>`;
-    return `<div class="at">${head}${a.skills.map(([id, n, tip]) => {
+    return `<div class="at">${head}${a.skills.map(([id, n]) => {
       const r = S.rk[id] || 0, c = R.cap(S, id), sig = S.sig === id;
       let ctl = "";
       if (m === "player" && S.sp > 0) ctl = `<button data-act="up" data-id="${id}"${r >= c ? " disabled" : ""} aria-label="Прокачать: ${n}" style="width:38px;padding:0;font-size:18px">+</button>`;
@@ -165,14 +165,14 @@ function attrGrid(m) {
       const tot = m === "pick" ? R.skill(S, id) : `${R.skill(S, id)}<small title="Потолок навыка">/${R.ceil(S, id)}</small>`;
       const inner = `${sig || m === "pick" ? `<span class="star" aria-hidden="true">★</span>` : ""}<span class="sn">${n}${note ? `<small>${note}</small>` : ""}</span>${ctl}<span class="tot">${tot}</span>`;
       return m === "pick"
-        ? `<button class="sk${sig ? " sig" : ""}" data-act="sig" data-id="${id}" data-tip="${esc(tip)}" aria-pressed="${sig}" style="width:100%;border:0;border-top:1px solid var(--line);border-radius:0;text-align:left;min-height:48px;background:${sig ? "var(--teal2)" : "none"}">${inner}</button>`
-        : `<div class="sk${sig ? " sig" : ""}" data-tip="${esc(tip)}" tabindex="0">${inner}</div>`;
+        ? `<button class="sk${sig ? " sig" : ""}" data-act="sig" data-id="${id}" data-skill="${id}" aria-pressed="${sig}" style="width:100%;border:0;border-top:1px solid var(--line);border-radius:0;text-align:left;min-height:48px;background:${sig ? "var(--teal2)" : "none"}">${inner}</button>`
+        : `<div class="sk${sig ? " sig" : ""}" data-skill="${id}" tabindex="0">${inner}</div>`;
     }).join("")}</div>`;
   }).join("")}</div>`;
 }
 
 function idCard(m) {
-  const A = m === "admin", f = R.faithOf(S), h = R.humanity(S);
+  const A = m === "admin", f = R.faithOf(S), h = R.humanity(S), cn = R.connection(S);
   const fact = (l, v) => `<div><dt>${l}</dt><dd>${esc(v || "—")}</dd></div>`;
   const top = A
     ? `<div class="f">${fld("name", "wide")}${fld("sex")}${fld("dob")}${planetSel()}${S.planet === R.OTHER ? fld("pname") + fld("pcode") + fld("pdesc", "wide") : ""}${fld("race")}${clsSel()}${fld("h")}${fld("w")}${faithSel()}${sigSel()}${num("cr", "Кредиты")}${num("sp", "Очки навыков")}</div>`
@@ -181,12 +181,22 @@ function idCard(m) {
   return `<section class="panel idc">${photo(m !== "view")}<div>${top}</div>
     <div class="strip">
       <div class="big"><small>Федеральный номер</small><span id="fid">${esc(R.fid(S))}</span></div>
-      <div class="hum${h < 50 ? " low" : ""}"><small style="font-size:13px;color:var(--mute)">Человечность <b id="humv">${h}</b> / 100</small><div class="meter"><i id="humb" style="width:${h}%"></i></div></div>
+      <div class="meters">${meter("hum", "Человечность", h, R.humanityMax(S), "Стойкость")}${meter("con", "Связь с миром", cn, R.connectionMax(S), "Сила воли")}</div>
       <div class="big"><small>Кредиты</small>${m === "player" ? `<input class="crin" data-k="cr" data-n="1" inputmode="numeric" value="${esc(S.cr)}" aria-label="Кредиты">` : esc(S.cr)}</div>
       <div class="big${S.sp ? " acc" : ""}"><small>Очки навыков</small>${S.sp}${A ? ` <button data-act="givesp" style="min-height:34px;padding:0 10px;font-size:14px">+1 очко</button>` : ""}</div>
-    </div></section>`;
+    </div>${balanceBox()}</section>`;
 }
 
+// Шкала: значение / максимум (100 + 10 за каждое очко навыка).
+function meter(id, label, v, max, from) {
+  const p = Math.round(v / max * 100);
+  return `<div class="hum${id === "con" ? " con" : ""}${p < 50 ? " low" : ""}" data-tip="Максимум: 100 + ${R.PER_POINT} за каждое очко навыка «${from}»"><small>${label} <b id="${id}v">${v}</b> / <span id="${id}m">${max}</span></small><div class="meter"><i id="${id}b" style="width:${p}%"></i></div></div>`;
+}
+// Плашка состояния: импланты съели человечность / магия — связь с миром.
+function balanceBox() {
+  const st = R.balanceOf(S);
+  return `<div id="balance">${st.map(x => `<div class="state ${x.level}"><b>${esc(x.name)}</b><span>${esc(x.text)}</span></div>`).join("")}</div>`;
+}
 function lvlBand(m) {
   const A = m === "admin";
   return `<section class="lvl"><div><small>Уровень</small><b class="num">${S.lvl}</b></div>
@@ -196,19 +206,21 @@ function lvlBand(m) {
 }
 
 // Списки «название + описание»: оружие, импланты (ещё цена в человечности), заклинания.
+// Чем платят за импланты и заклинания: [подсказка у поля цены, подпись в списке].
+const COST = { imp: ["Цена в человечности", "человечности"], spl: ["Цена в связи с миром", "связи с миром"] };
 const DESC = { wpn: ["Название", "Урон, патроны, особенности"], imp: ["Имплант", "Что делает, где установлен"], spl: ["Заклинание", "Эффект, цена, ограничения"] };
 function listEdit(k, add) {
   const inp = (i, f, v, ph, extra = "") => `<input data-l="${k}" data-i="${i}" data-f="${f}" value="${esc(v)}" placeholder="${ph}" aria-label="${ph}"${extra}>`;
   const x = i => `<button class="x" data-act="del" data-l="${k}" data-i="${i}" aria-label="Удалить">✕</button>`;
   const rows = DESC[k]
-    ? S[k].map((it, i) => `<div class="row ${k === "imp" ? "imp" : "wpn"}">${inp(i, "n", it.n, DESC[k][0])}${k === "imp" ? inp(i, "c", it.c, "0", ' inputmode="numeric" title="Цена в человечности"') : ""}${inp(i, "d", it.d, DESC[k][1])}${x(i)}</div>`)
+    ? S[k].map((it, i) => `<div class="row ${COST[k] ? "imp" : "wpn"}">${inp(i, "n", it.n, DESC[k][0])}${COST[k] ? inp(i, "c", it.c, "0", ` inputmode="numeric" title="${COST[k][0]}"`) : ""}${inp(i, "d", it.d, DESC[k][1])}${x(i)}</div>`)
     : S[k].map((it, i) => `<div class="row"><input data-l="${k}" data-i="${i}" value="${esc(it)}" aria-label="Строка"><button class="x" data-act="del" data-l="${k}" data-i="${i}" aria-label="Удалить">✕</button></div>`);
   return `<div>${rows.join("")}<button class="add" data-act="addl" data-l="${k}">${add}</button></div>`;
 }
 // Список с кнопкой «Изменить»: сначала просто читается, править — по кнопке.
 function listBox(k, title, add, can, note = "") {
   const items = DESC[k]
-    ? S[k].filter(x => x.n || x.d).map(x => `<li><b>${esc(x.n || "Без названия")}${k === "imp" && x.c ? ` <em>−${esc(x.c)} человечности</em>` : ""}</b>${x.d ? `<span>${esc(x.d)}</span>` : ""}</li>`)
+    ? S[k].filter(x => x.n || x.d).map(x => `<li><b>${esc(x.n || "Без названия")}${COST[k] && x.c ? ` <em>−${esc(x.c)} ${COST[k][1]}</em>` : ""}</b>${x.d ? `<span>${esc(x.d)}</span>` : ""}</li>`)
     : S[k].filter(Boolean).map(x => `<li>${esc(x)}</li>`);
   return `<div class="box"><h3>${title}${can ? `<button class="sm${open[k] ? " pri" : ""}" data-act="invt" data-l="${k}">${open[k] ? "Готово" : "Изменить"}</button>` : ""}</h3>${note}
     ${open[k] && can ? listEdit(k, add) : items.length ? `<ul class="ilist">${items.join("")}</ul>` : `<p class="none">Пусто</p>`}</div>`;
@@ -405,8 +417,12 @@ document.addEventListener("input", e => {
   if (t.dataset.k === "planet" && mode === "wiz") { render(); if (S.planet === R.OTHER) planetDlg(); return; }
   if (t.tagName === "SELECT" && mode === "edit") return render();
   const f = $("#fid"); if (f) f.textContent = R.fid(S);
-  const hv = $("#humv");
-  if (hv) { const h = R.humanity(S); hv.textContent = h; $("#humb").style.width = h + "%"; hv.closest(".hum").classList.toggle("low", h < 50); }
+  for (const [id, v, max] of [["hum", R.humanity(S), R.humanityMax(S)], ["con", R.connection(S), R.connectionMax(S)]]) {
+    const el = $(`#${id}v`); if (!el) continue;
+    const p = Math.round(v / max * 100);
+    el.textContent = v; $(`#${id}m`).textContent = max; $(`#${id}b`).style.width = p + "%"; el.closest(".hum").classList.toggle("low", p < 50);
+  }
+  const bal = $("#balance"); if (bal) bal.outerHTML = balanceBox();
 });
 
 document.addEventListener("change", e => {
@@ -475,7 +491,7 @@ document.addEventListener("click", async e => {
       case "register": clearTimeout(saveT); saveT = 0; S = await API.save({ ...S, created: true }); mode = "sheet"; render(); scrollTo(0, 0); toast("Персонаж зарегистрирован в Бюро"); break;
       case "up": {
         const x = R.SKILLS.find(k => k.id === b.dataset.id), now = R.skill(S, x.id);
-        dialog(`<h2 class="stepH">Прокачать «${esc(x.name)}»?</h2><p class="hint">${esc(x.text)}</p>
+        dialog(`<h2 class="stepH">Прокачать «${esc(x.name)}»?</h2><p class="hint">${esc(x.text)}${x.fit ? `<br><i>${esc(x.fit)}</i>` : ""}</p>
           <p style="font:800 34px 'Exo 2',sans-serif;margin:6px 0">${now} → <span style="color:var(--acc)">${now + 1}</span> <small style="font:500 15px Inter,sans-serif;color:var(--mute)">потолок ${R.ceil(S, x.id)}</small></p>
           <p>Потратится 1 очко навыков, останется ${S.sp - 1}. Отменить прокачку сможет только мастер.</p>`,
           `<button data-act="dclose">Отмена</button><button class="pri" data-act="upok" data-id="${x.id}">Прокачать</button>`);
@@ -505,8 +521,8 @@ document.addEventListener("click", async e => {
       case "aattr": S.attr[b.dataset.k] = Math.min(10, Math.max(1, S.attr[b.dataset.k] + d)); dirty = true; render(); break;
       case "ark": S.rk[b.dataset.id] = Math.max(0, (S.rk[b.dataset.id] || 0) + d); dirty = true; render(); break;
       case "addl": {
-        const k = b.dataset.l; S[k].push(k === "imp" ? { n: "", c: "", d: "" } : DESC[k] ? { n: "", d: "" } : ""); dirty = true; render();
-        const ins = document.querySelectorAll(`input[data-l="${k}"]`); (DESC[k] ? ins[ins.length - (k === "imp" ? 3 : 2)] : ins[ins.length - 1])?.focus();
+        const k = b.dataset.l; S[k].push(COST[k] ? { n: "", c: "", d: "" } : DESC[k] ? { n: "", d: "" } : ""); dirty = true; render();
+        const ins = document.querySelectorAll(`input[data-l="${k}"]`); (DESC[k] ? ins[ins.length - (COST[k] ? 3 : 2)] : ins[ins.length - 1])?.focus();
         break;
       }
       case "del": S[b.dataset.l].splice(+b.dataset.i, 1); dirty = true; render(); break;
@@ -557,14 +573,18 @@ document.addEventListener("submit", async e => {
 // Подсказка с описанием навыка при наведении (и при фокусе — для клавиатуры и телефона).
 const tip = document.createElement("div"); tip.className = "tip"; tip.setAttribute("role", "tooltip"); document.body.append(tip);
 function showTip(el) {
-  tip.textContent = el.dataset.tip; tip.classList.add("on");
+  const x = el.dataset.skill && R.SKILLS.find(k => k.id === el.dataset.skill);
+  // Навык: название и характеристика, описание, кому подходит.
+  if (x) tip.innerHTML = `<b>${esc(x.name)}</b><small>${esc(R.ATTRS.find(a => a.id === x.attr).name)}</small><p>${esc(x.text)}</p>${x.fit ? `<em>${esc(x.fit)}</em>` : ""}`;
+  else tip.textContent = el.dataset.tip;
+  tip.classList.toggle("rich", !!x); tip.classList.add("on");
   const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-  tip.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
+  tip.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
   tip.style.top = (r.top - h - 8 > 0 ? r.top - h - 8 : r.bottom + 8) + "px";
 }
 const hideTip = () => tip.classList.remove("on");
-document.addEventListener("mouseover", e => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : hideTip(); });
-document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip]"); el ? showTip(el) : hideTip(); });
+document.addEventListener("mouseover", e => { const el = e.target.closest("[data-tip],[data-skill]"); el ? showTip(el) : hideTip(); });
+document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip],[data-skill]"); el ? showTip(el) : hideTip(); });
 addEventListener("scroll", hideTip, { passive: true });
 
 // Окно закрыли (кнопкой или Esc) — перерисовать страницу под ним.
