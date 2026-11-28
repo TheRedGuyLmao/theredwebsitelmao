@@ -111,11 +111,14 @@ const FL = {
   gm: ["Заметки мастера", "Игрок их не видит", 1],
 };
 const WIDE = ["look", "pdesc", "bio", "notes", "gm"];
+const ptypeLine = () => { const t = S.pcode.length >= 5 ? R.planetType(S.pcode) : ""; return t ? `${S.pcode.slice(3, 5)} — ${t}` : S.pcode.length >= 5 ? "Такого числа нет в списке — уточни у мастера" : ""; };
 const ageLine = () => { const n = R.age(S.dob); return n === null ? "" : `Возраст: ${R.ageText(n)}`; };
 function fld(k, cls = "") {
   const [l, h, ta] = FL[k], v = esc(S[k]);
-  const info = k === "dob" ? ` <span class="info" data-tip="${esc(R.YEAR_NOTE)}" tabindex="0" aria-label="${esc(R.YEAR_NOTE)}">i</span>` : "";
-  const after = k === "dob" ? `<small class="age" id="age">${ageLine()}</small>` : "";
+  const info = k === "dob" ? ` <span class="info" data-tip="${esc(R.YEAR_NOTE)}" tabindex="0" aria-label="${esc(R.YEAR_NOTE)}">i</span>`
+    : k === "pcode" ? ` <span class="info" data-codes="1" tabindex="0" aria-label="Что значат цифры в коде планеты">i</span>` : "";
+  const after = k === "dob" ? `<small class="age" id="age">${ageLine()}</small>`
+    : k === "pcode" ? `<small class="age" id="ptype">${esc(ptypeLine())}</small>` : "";
   return `<label class="${cls}">${l}${info}${h ? `<small>${h}</small>` : ""}${ta ? `<textarea data-k="${k}">${v}</textarea>` : `<input data-k="${k}" value="${v}"${k === "h" || k === "w" ? ' inputmode="numeric"' : ""}${k === "dob" ? ` inputmode="numeric" placeholder="ГГГГ-ММ-ДД" maxlength="10"${S.dob && R.basicsErrors(S).some(x => x.startsWith("Дата")) ? ' class="bad"' : ""}` : ""}${k === "pcode" ? ` placeholder="XX-00-0000" maxlength="10" autocapitalize="characters" spellcheck="false"${S.pcode && !R.pcodeOk(S.pcode) ? ' class="bad"' : ""}` : ""}>`}${after}</label>`;
 }
 const num = (k, l) => `<label>${l}<input data-k="${k}" data-n="1" inputmode="numeric" value="${esc(S[k])}"></label>`;
@@ -304,10 +307,11 @@ function welcomeView() {
   return `<section class="panel welcome">
     <h2>Новый Авантюрист</h2>
     <h3>Добро пожаловать в Интергалактическое Авантюристское Бюро!</h3>
-    <p>ИАБ - крупнейшая организация по исполнению заказов по всей галактике.</p>
-    <p>Эта страница предназначена для передачи основной информации о вас для передачи в Бюро.</p>
+    <p>ИАБ - крупнейшая организация по исполнению заказов по всей СверхВселенной!</p>
+    <p>Сами ли вы решили зарегистрироваться или были приглашены командованием, вы присоединяетесь к организации элитных бойцов, техников, магов и инженеров, известных своими выдающимися способностями и навыками. Когда-то и вы можете стать одним из них!</p>
+    <p>Эта страница предназначена для передачи основной информации о вас в Бюро. Вся информация будет храниться на наших серверах и будет обновляться в соответствии с вашими достижениями. Просим отнестись с большой серьёзностью к заполнению документа, ведь потом эта информация будет использована для вашей оценки как профессионального авантюриста, а затем и наёмника!</p>
     <button class="pri big-btn" data-act="startwiz">${started ? "Продолжить заполнение" : "Начать заполнение"}</button>
-    <p class="fine">ИАБ - государственная организация. Если ваше поведение будет считано неподобающим, информация о ваших действиях будет передана в соответствующие органы.</p>
+    <p class="fine">ИАБ - государственная организация. Если ваше поведение будет считано неподобающим, информация о ваших действиях с прилагаемым досье будет передана в соответствующие органы.</p>
   </section>`;
 }
 
@@ -399,7 +403,7 @@ document.addEventListener("input", e => {
     const d = t.value.replace(/\D/g, "").slice(0, 8);
     t.value = d.length > 6 ? `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6)}` : d.length > 4 ? `${d.slice(0, 4)}-${d.slice(4)}` : d;
     const y = +t.value.slice(0, 4);
-    t.classList.toggle("bad", t.value.length === 10 && (!R.dobOk(t.value) || y < R.DOB_MIN || y > R.DOB_MAX));
+    t.classList.toggle("bad", t.value.length === 10 && (!R.dobOk(t.value) || y > R.DOB_MAX));
     const ag = $("#age"); if (ag) { S.dob = t.value; ag.textContent = ageLine(); }
   }
   if (t.dataset.k === "pcode") {
@@ -408,6 +412,7 @@ document.addEventListener("input", e => {
     for (const ch of t.value.toUpperCase().replace(/[^A-Z0-9]/g, "")) { if (L.length < 2) { if (/[A-Z]/.test(ch)) L += ch; } else if (/\d/.test(ch) && D.length < 6) D += ch; }
     t.value = L + (D ? "-" + D.slice(0, 2) : "") + (D.length > 2 ? "-" + D.slice(2) : "");
     t.classList.toggle("bad", t.value.length === 10 && !R.pcodeOk(t.value));
+    const pt = $("#ptype"); if (pt) { S.pcode = t.value; pt.textContent = ptypeLine(); }
   }
   if (t.dataset.k === "h" || t.dataset.k === "w") t.value = t.value.replace(/\D/g, "").slice(0, 4);
   if (t.dataset.k) S[t.dataset.k] = t.dataset.n ? (parseInt(t.value) || 0) : t.value;
@@ -425,19 +430,51 @@ document.addEventListener("input", e => {
   const bal = $("#balance"); if (bal) bal.outerHTML = balanceBox();
 });
 
+/* ---------- редактор портрета: увеличить, уменьшить, подвинуть ---------- */
+const CW = 320, CH = 400; // размер готового портрета (4:5)
+let crop = null;          // { img, base, zoom, x, y } — x, y: левый верхний угол картинки в рамке
+function cropDraw() {
+  const c = $("#crop"); if (!c || !crop) return;
+  const s = crop.base * crop.zoom, w = crop.img.width * s, h = crop.img.height * s;
+  crop.x = Math.min(0, Math.max(CW - w, crop.x)); crop.y = Math.min(0, Math.max(CH - h, crop.y)); // рамка всегда заполнена
+  const g = c.getContext("2d"); g.fillStyle = "#000"; g.fillRect(0, 0, CW, CH);
+  g.drawImage(crop.img, crop.x, crop.y, w, h);
+}
+function cropZoom(z) {
+  // Масштаб вокруг центра рамки, чтобы картинка не «уезжала».
+  const s0 = crop.base * crop.zoom, cx = (CW / 2 - crop.x) / s0, cy = (CH / 2 - crop.y) / s0;
+  crop.zoom = Math.min(5, Math.max(1, z));
+  const s1 = crop.base * crop.zoom; crop.x = CW / 2 - cx * s1; crop.y = CH / 2 - cy * s1;
+  const r = $("#cropz"); if (r) r.value = crop.zoom;
+  cropDraw();
+}
+function cropOpen(img) {
+  const base = Math.max(CW / img.width, CH / img.height);
+  crop = { img, base, zoom: 1, x: (CW - img.width * base) / 2, y: (CH - img.height * base) / 2 };
+  dialog(`<h2 class="stepH">Портрет</h2><p class="hint">Тяни картинку, чтобы подвинуть. Ползунок или колёсико мыши — увеличить и уменьшить.</p>
+    <div class="cropbox"><canvas id="crop" width="${CW}" height="${CH}" aria-label="Портрет: тяни, чтобы подвинуть"></canvas></div>
+    <label class="cropz">Масштаб<input id="cropz" type="range" min="1" max="5" step="0.01" value="1"></label>`,
+    `<button data-act="dclose">Отмена</button><button class="pri" data-act="cropok">Готово</button>`);
+  cropDraw();
+}
+document.addEventListener("input", e => { if (e.target.id === "cropz" && crop) cropZoom(+e.target.value); });
+document.addEventListener("wheel", e => { if (e.target.id !== "crop" || !crop) return; e.preventDefault(); cropZoom(crop.zoom * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); }, { passive: false });
+document.addEventListener("pointerdown", e => {
+  if (e.target.id !== "crop" || !crop) return;
+  const c = e.target, k = CW / c.clientWidth; let px = e.clientX, py = e.clientY;
+  c.setPointerCapture(e.pointerId);
+  const move = ev => { crop.x += (ev.clientX - px) * k; crop.y += (ev.clientY - py) * k; px = ev.clientX; py = ev.clientY; cropDraw(); };
+  const up = () => { c.removeEventListener("pointermove", move); c.removeEventListener("pointerup", up); c.removeEventListener("pointercancel", up); };
+  c.addEventListener("pointermove", move); c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
+});
+
 document.addEventListener("change", e => {
   const t = e.target;
   if (!t.dataset.photo) return;
   const file = t.files[0]; if (!file) return;
+  t.value = ""; // чтобы ту же картинку можно было выбрать снова
   const im = new Image(), u = URL.createObjectURL(file);
-  im.onload = () => {
-    const W = 240, H = 300, c = document.createElement("canvas"); c.width = W; c.height = H;
-    const r = Math.max(W / im.width, H / im.height), w = im.width * r, h = im.height * r;
-    c.getContext("2d").drawImage(im, (W - w) / 2, (H - h) / 2, w, h);
-    S.photo = c.toDataURL("image/jpeg", .82); URL.revokeObjectURL(u);
-    if (mode === "wiz") draftSoon(); else dirty = true;
-    render();
-  };
+  im.onload = () => { URL.revokeObjectURL(u); cropOpen(im); };
   im.onerror = () => toast("Не удалось открыть картинку", 1);
   im.src = u;
 });
@@ -464,7 +501,12 @@ document.addEventListener("click", async e => {
       case "pdlg": planetDlg(); break;
       case "atlas": atlasDlg(); break;
       case "pick": S.planet = b.dataset.c; draftSoon(); if (S.planet === R.OTHER) planetDlg(); else $("#dlg").close(); break;
-      case "dclose": $("#dlg").close(); break;
+      case "dclose": crop = null; $("#dlg").close(); break;
+      case "cropok": {
+        cropDraw(); S.photo = $("#crop").toDataURL("image/jpeg", .85); crop = null;
+        if (mode === "wiz") draftSoon(); else dirty = true;
+        $("#dlg").close(); break;
+      }
       case "faith": S.faith = b.dataset.f; render(); draftSoon(); break;
       case "cls": S.cls = b.dataset.c; render(); draftSoon(); break;
       case "startwiz": mode = "wiz"; step = 0; render(); scrollTo(0, 0); break;
@@ -573,18 +615,22 @@ document.addEventListener("submit", async e => {
 // Подсказка с описанием навыка при наведении (и при фокусе — для клавиатуры и телефона).
 const tip = document.createElement("div"); tip.className = "tip"; tip.setAttribute("role", "tooltip"); document.body.append(tip);
 function showTip(el) {
+  // Внутри открытого окна (dialog) подсказка должна жить в нём же, иначе окно её перекроет.
+  const host = el.closest("dialog") || document.body; if (tip.parentNode !== host) host.append(tip);
   const x = el.dataset.skill && R.SKILLS.find(k => k.id === el.dataset.skill);
   // Навык: название и характеристика, описание, кому подходит.
   if (x) tip.innerHTML = `<b>${esc(x.name)}</b><small>${esc(R.ATTRS.find(a => a.id === x.attr).name)}</small><p>${esc(x.text)}</p>${x.fit ? `<em>${esc(x.fit)}</em>` : ""}`;
+  // Код планеты: что значит число посередине.
+  else if (el.dataset.codes) tip.innerHTML = `<b>Код планеты</b><p>СИСТЕМА-<u>НН</u>-НННН. Буквы системы можно выдумать самому, главное — две цифры посередине:</p><ul class="codes">${R.PLANET_TYPES.map(([n, t]) => `<li><span>${n}</span>${esc(t)}</li>`).join("")}</ul>`;
   else tip.textContent = el.dataset.tip;
-  tip.classList.toggle("rich", !!x); tip.classList.add("on");
+  tip.classList.toggle("rich", !!(x || el.dataset.codes)); tip.classList.add("on");
   const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
   tip.style.left = Math.max(8, Math.min(document.documentElement.clientWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
   tip.style.top = (r.top - h - 8 > 0 ? r.top - h - 8 : r.bottom + 8) + "px";
 }
 const hideTip = () => tip.classList.remove("on");
-document.addEventListener("mouseover", e => { const el = e.target.closest("[data-tip],[data-skill]"); el ? showTip(el) : hideTip(); });
-document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip],[data-skill]"); el ? showTip(el) : hideTip(); });
+document.addEventListener("mouseover", e => { const el = e.target.closest("[data-tip],[data-skill],[data-codes]"); el ? showTip(el) : hideTip(); });
+document.addEventListener("focusin", e => { const el = e.target.closest("[data-tip],[data-skill],[data-codes]"); el ? showTip(el) : hideTip(); });
 addEventListener("scroll", hideTip, { passive: true });
 
 // Окно закрыли (кнопкой или Esc) — перерисовать страницу под ним.

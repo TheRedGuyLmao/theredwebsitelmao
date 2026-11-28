@@ -167,6 +167,9 @@ input.bad{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .tip.rich b{font:700 17px "Exo 2",sans-serif}
 .tip.rich small{margin-left:8px;font-size:12px;opacity:.65;text-transform:uppercase;letter-spacing:.06em}
 .tip.rich p{margin:6px 0 0}
+.tip .codes{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:13px}
+.tip .codes li{display:grid;grid-template-columns:28px 1fr;gap:6px}
+.tip .codes span{font:700 13px "Exo 2",sans-serif;opacity:.8}
 .tip.rich em{display:block;margin-top:8px;padding-top:8px;border-top:1px solid rgba(127,127,127,.35);font-size:13px;opacity:.85}
 .crin{width:7em;margin:2px 0 0;min-height:36px;padding:4px 8px;font:700 18px "Exo 2",sans-serif}
 .box h3 .sm{min-height:32px;padding:0 12px;font:500 14px Inter,sans-serif}
@@ -227,6 +230,11 @@ input.bad{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
 .state.break b{color:var(--acc)}
 .state.warn{border-color:#c9952b;background:color-mix(in srgb,#c9952b 12%,transparent)}
 .state.warn b{color:#c9952b}
+.cropbox{display:grid;place-items:center;margin:6px 0 12px}
+#crop{width:min(260px,70vw);aspect-ratio:4/5;border-radius:12px;border:2px solid var(--teal);cursor:grab;touch-action:none;background:#000}
+#crop:active{cursor:grabbing}
+.cropz{max-width:320px;margin:0 auto}
+.cropz input{padding:0;min-height:32px;accent-color:var(--teal)}
 .pinfo{border:1px solid var(--line);border-left:6px solid var(--teal);border-radius:12px;padding:12px 14px;background:var(--teal2)}
 .pinfo h3 small{display:block;font:500 13px Inter,sans-serif;color:var(--mute)}
 .pinfo p{margin:0;white-space:pre-wrap}

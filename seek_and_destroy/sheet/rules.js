@@ -6,9 +6,8 @@ export const MIN = 1;    // стартовое значение каждой х�
 export const MAX = 6;    // максимум при создании
 // Время кампании. Возраст = YEAR − год рождения (3033 → 18 лет).
 export const YEAR = 3051;
-export const DOB_MIN = 2955;   // самый ранний год рождения
 export const DOB_MAX = 3033;   // самый поздний год рождения
-export const YEAR_NOTE = "Действия происходят в 3051 году. Минимальный год 3033, максимальный - 2955";
+export const YEAR_NOTE = "Действия происходят в 3051 году. Минимальный год 3033 (18 лет).";
 export const MAX_LVL = 20; // максимальный уровень; каждый новый уровень даёт 1 очко навыков
 
 // [код, название, система, описание для игроков]
@@ -189,6 +188,18 @@ export function balanceOf(s) {
   return out;
 }
 // Код своей планеты: СИСТЕМА-НН-НННН, например KR-07-1234. Пустой — значит XX-00-0000.
+// Число посередине кода планеты — её тип. Систему (буквы) игрок может выдумать сам.
+export const PLANET_TYPES = [
+  ["01", "Планета-Столица Системы"],
+  ["21", "Технологическая Планета"],
+  ["55", "Планета переполнена Магией"],
+  ["23", "Планета слабо подходящая для туризма"],
+  ["69", "Планета отлично подходящая для туризма"],
+  ["12", "Дикая Планета, нет развитой цивилизации"],
+  ["99", "ОСОБО ОПАСНАЯ ПЛАНЕТА, ПОСЕЩЕНИЕ ОБЫЧНЫМИ ГРАЖДАНАМИ ВОСПРЕЩЕНО"],
+  ["00", "[ВЫРЕЗАНО]"],
+];
+export const planetType = code => PLANET_TYPES.find(t => t[0] === String(code || "").slice(3, 5))?.[1] || "";
 export const pcodeOk = v => /^[A-Z]{2}-\d{2}-\d{4}$/.test(v);
 export const planetCode = s => s.planet === OTHER ? (pcodeOk(s.pcode) ? s.pcode : OTHER) : s.planet;
 export const planetName = s => s.planet === OTHER ? (s.pname.trim() || "Другая") : PLANETS.find(p => p[0] === s.planet)?.[1] || "";
@@ -213,7 +224,7 @@ export function basicsErrors(s) {
   const e = [];
   if (!s.name.trim()) e.push("Не указано имя");
   if (!dobOk(s.dob)) e.push(`Дата рождения: нужен формат ГГГГ-ММ-ДД, например ${DOB_MAX - 3}-01-21`);
-  else if (+s.dob.slice(0, 4) < DOB_MIN || +s.dob.slice(0, 4) > DOB_MAX) e.push(`Дата рождения: год от ${DOB_MIN} до ${DOB_MAX} (сейчас ${YEAR} год)`);
+  else if (+s.dob.slice(0, 4) > DOB_MAX) e.push(`Дата рождения: персонажу должно быть не меньше 18 лет — год не позже ${DOB_MAX} (сейчас ${YEAR} год)`);
   if (s.planet === OTHER && (!s.pname.trim() || !s.pdesc.trim())) e.push("Своя планета: нужно название и описание");
   if (s.planet === OTHER && s.pcode) {
     if (!pcodeOk(s.pcode)) e.push("Код планеты: нужен формат СИСТЕМА-НН-НННН, например KR-07-1234");
